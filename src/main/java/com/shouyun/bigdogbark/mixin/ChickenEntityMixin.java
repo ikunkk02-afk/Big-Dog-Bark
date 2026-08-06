@@ -59,4 +59,12 @@ public abstract class ChickenEntityMixin implements DingDongChickenAccess {
 			cir.setReturnValue(BigDogBarkSoundEvents.DING_DONG_CHICKEN_DEATH);
 		}
 	}
+
+	/**
+	 * 替换原版鸡的日常叫声(ambient),所有鸡(含普通鸡)统一播放自定义叫声。
+	 */
+	@Inject(method = "getAmbientSound", at = @At("TAIL"), cancellable = true)
+	private void bigDogBark$replaceAmbientSound(CallbackInfoReturnable<SoundEvent> cir) {
+		cir.setReturnValue(BigDogBarkSoundEvents.DING_DONG_CHICKEN_AMBIENT);
+	}
 }

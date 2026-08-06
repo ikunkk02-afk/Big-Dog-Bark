@@ -19,6 +19,9 @@ public final class BigDogBarkSoundEvents {
 	/** 叮咚鸡死亡音效(仅被标记的叮咚鸡播放,普通鸡保持原版死亡声)。 */
 	public static final SoundEvent DING_DONG_CHICKEN_DEATH = register("ding_dong_chicken_death");
 
+	/** 鸡的日常叫声(替换原版鸡 ambient 叫声,所有鸡生效)。 */
+	public static final SoundEvent DING_DONG_CHICKEN_AMBIENT = register("ding_dong_chicken_ambient");
+
 	private BigDogBarkSoundEvents() {
 	}
 

@@ -37,6 +37,7 @@
 - 自定义音效文件路径:
   - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_convert.ogg`(转化)
   - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_death.ogg`(死亡)
+  - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_ambient.ogg`(日常叫声,替换原版鸡叫声,所有鸡生效)
 - **当前阶段尚未实现**“喂给大狗后成长”,为后续功能。
 
 ## 构建与运行

@@ -16,5 +16,14 @@
         "stream": false
       }
     ]
+  },
+  "ding_dong_chicken_ambient": {
+    "subtitle": "subtitles.big_dog_bark.ding_dong_chicken_ambient",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/ding_dong_chicken_ambient",
+        "stream": false
+      }
+    ]
   }
 }

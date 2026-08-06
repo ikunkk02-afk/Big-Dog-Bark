@@ -6,5 +6,6 @@
   "item.big_dog_bark.ding_dong_chicken_meat": "叮咚鸡肉",
   "item.big_dog_bark.ding_dong_chicken_meat.tooltip": "似乎可以喂给某种大狗",
   "subtitles.big_dog_bark.ding_dong_chicken_convert": "叮咚鸡:转化",
-  "subtitles.big_dog_bark.ding_dong_chicken_death": "叮咚鸡:死亡"
+  "subtitles.big_dog_bark.ding_dong_chicken_death": "叮咚鸡:死亡",
+  "subtitles.big_dog_bark.ding_dong_chicken_ambient": "鸡:叫声"
 }
