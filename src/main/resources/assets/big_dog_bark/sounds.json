@@ -1,0 +1,20 @@
+{
+  "ding_dong_chicken_convert": {
+    "subtitle": "subtitles.big_dog_bark.ding_dong_chicken_convert",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/ding_dong_chicken_convert",
+        "stream": false
+      }
+    ]
+  },
+  "ding_dong_chicken_death": {
+    "subtitle": "subtitles.big_dog_bark.ding_dong_chicken_death",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/ding_dong_chicken_death",
+        "stream": false
+      }
+    ]
+  }
+}

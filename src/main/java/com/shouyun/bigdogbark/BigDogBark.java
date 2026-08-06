@@ -1,6 +1,10 @@
 package com.shouyun.bigdogbark;
 
 import com.shouyun.bigdogbark.entity.BigDogWolfTamingHandler;
+import com.shouyun.bigdogbark.entity.DingDongChickenDeathHandler;
+import com.shouyun.bigdogbark.entity.DingDongChickenInteractionHandler;
+import com.shouyun.bigdogbark.item.BigDogBarkItems;
+import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
 
@@ -17,8 +21,14 @@ public class BigDogBark implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		// 注册“附魔骨头驯服狼”的实体交互事件(仅逻辑注册,事件内部自行分流客户端/服务端)。
+		// 第一阶段:附魔骨头驯服狼(保持原有注册不变)
 		BigDogWolfTamingHandler.register();
+
+		// 第二阶段:叮咚鸡附魔、附魔种子转化鸡、叮咚鸡死亡掉落特殊鸡肉
+		BigDogBarkSoundEvents.register();
+		BigDogBarkItems.register();
+		DingDongChickenInteractionHandler.register();
+		DingDongChickenDeathHandler.register();
 
 		LOGGER.info("Big Dog Bark (大狗叫) initialized.");
 	}

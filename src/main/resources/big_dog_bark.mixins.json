@@ -3,7 +3,8 @@
 	"package": "com.shouyun.bigdogbark.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"WolfEntityMixin"
+		"WolfEntityMixin",
+		"ChickenEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

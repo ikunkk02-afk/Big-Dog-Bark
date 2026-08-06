@@ -1,4 +1,10 @@
 {
   "enchantment.big_dog_bark.big_dog_bark": "Big Dog Bark",
-  "tag.item.big_dog_bark.enchantable.big_dog_bark": "Big Dog Bark Enchantable"
+  "tag.item.big_dog_bark.enchantable.big_dog_bark": "Big Dog Bark Enchantable",
+  "enchantment.big_dog_bark.ding_dong_chicken": "Ding Dong Chicken",
+  "tag.item.big_dog_bark.enchantable.ding_dong_chicken": "Ding Dong Chicken Enchantable",
+  "item.big_dog_bark.ding_dong_chicken_meat": "Ding Dong Chicken",
+  "item.big_dog_bark.ding_dong_chicken_meat.tooltip": "Seems suitable for feeding a certain big dog",
+  "subtitles.big_dog_bark.ding_dong_chicken_convert": "Ding Dong Chicken converts",
+  "subtitles.big_dog_bark.ding_dong_chicken_death": "Ding Dong Chicken dies"
 }
