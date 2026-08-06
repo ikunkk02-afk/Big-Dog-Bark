@@ -25,5 +25,14 @@
         "stream": false
       }
     ]
+  },
+  "dog_growth_stage": {
+    "subtitle": "subtitles.big_dog_bark.dog_growth_stage",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_growth_stage",
+        "stream": false
+      }
+    ]
   }
 }

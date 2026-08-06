@@ -7,5 +7,13 @@
   "item.big_dog_bark.ding_dong_chicken_meat.tooltip": "Seems suitable for feeding a certain big dog",
   "subtitles.big_dog_bark.ding_dong_chicken_convert": "Ding Dong Chicken converts",
   "subtitles.big_dog_bark.ding_dong_chicken_death": "Ding Dong Chicken dies",
-  "subtitles.big_dog_bark.ding_dong_chicken_ambient": "Chicken clucks"
+  "subtitles.big_dog_bark.ding_dong_chicken_ambient": "Chicken clucks",
+  "subtitles.big_dog_bark.dog_growth_stage": "Big dog grows",
+  "action.big_dog_bark.big_dog_too_young": "The big dog is not fully grown yet",
+  "action.big_dog_bark.big_dog_max_growth": "This big dog has reached its maximum size",
+  "action.big_dog_bark.growth_progress": "Big dog growth: %s/%s",
+  "action.big_dog_bark.growth_stage_1": "The big dog grew a bit larger",
+  "action.big_dog_bark.growth_stage_2": "The big dog has become a large big dog",
+  "action.big_dog_bark.growth_stage_3": "The big dog has become a giant big dog",
+  "action.big_dog_bark.growth_stage_4": "The big dog has reached weapon size and is ready to be picked up"
 }

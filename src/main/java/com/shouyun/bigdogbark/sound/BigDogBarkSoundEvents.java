@@ -22,6 +22,9 @@ public final class BigDogBarkSoundEvents {
 	/** 鸡的日常叫声(替换原版鸡 ambient 叫声,所有鸡生效)。 */
 	public static final SoundEvent DING_DONG_CHICKEN_AMBIENT = register("ding_dong_chicken_ambient");
 
+	/** 特殊大狗阶段成长音效(仅在成长阶段跨越时播放一次)。 */
+	public static final SoundEvent DOG_GROWTH_STAGE = register("dog_growth_stage");
+
 	private BigDogBarkSoundEvents() {
 	}
 

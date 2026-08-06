@@ -38,7 +38,30 @@
   - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_convert.ogg`(转化)
   - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_death.ogg`(死亡)
   - `assets/big_dog_bark/sounds/entity/ding_dong_chicken_ambient.ogg`(日常叫声,替换原版鸡叫声,所有鸡生效)
-- **当前阶段尚未实现**“喂给大狗后成长”,为后续功能。
+
+### 第三阶段:特殊大狗成长系统
+
+- 只有**特殊大狗**(已驯服且 `BigDogBark.IsBigDog = true`)能够成长;普通狼、野生狼、其他玩家的狼都不能成长。
+- 只有**大狗的主人**能够喂食,其他玩家不能消耗物品或增加进度。
+- 使用**叮咚鸡肉**右键喂食(主手/副手均可),每喂食 1 个增加 **1 点成长进度**,共 **12 点**。
+- 每 3 点提升一个阶段,共 5 个阶段:
+
+| 阶段 | 进度 | 名称 | Scale |
+|---|---|---|---|
+| 0 | 0～2 | 普通大狗 | 1.00 |
+| 1 | 3～5 | 稍大大狗 | 1.25 |
+| 2 | 6～8 | 大型大狗 | 1.50 |
+| 3 | 9～11 | 巨型大狗 | 1.75 |
+| 4 | 12 | 武器大狗 | 2.00 |
+
+- 幼年特殊大狗不能成长(提示“大狗还没有成年”,不消耗物品),成年后可以正常培养。
+- 达到最大进度后继续右键不消耗物品、不增加进度、不重复播放成长音效,提示“这只大狗已经长到最大了”。
+- 每次成功喂食播放原版进食音效与少量爱心粒子;跨越阶段时播放自定义成长音效、更明显的粒子并显示阶段提示。
+- 成长进度 NBT 键:`BigDogBark.GrowthPoints`(0～12,随存档持久化;旧存档缺省 0)。
+- 体型缩放通过原版 `minecraft:generic.scale` 属性的临时修饰符 `big_dog_bark:growth_scale` 实现,同时影响模型、碰撞箱、命中箱与服务端碰撞检测,不会重复叠加;阶段 4(2.00 倍)代表已达到以后可以抱起的体型。
+- 变大的大狗保留原版全部行为:跟随、坐下/站起、攻击、保护、传送、游泳、狼铠、项圈颜色、自定义名称、繁殖(后代不继承大狗/成长状态)。
+- 自定义成长音效路径:`assets/big_dog_bark/sounds/entity/dog_growth_stage.ogg`。
+- **暂未实现**抱起大狗;下一阶段计划是“下蹲 + 右键”抱起最大体型(阶段 4)大狗。
 
 ## 构建与运行
 
@@ -92,7 +115,17 @@ gradlew.bat runDatagen    :: Fabric 数据生成(预留)
 /data get entity @e[type=minecraft:chicken,limit=1,sort=nearest]
 
 # 获得叮咚鸡肉
-/give @s big_dog_bark:ding_dong_chicken_meat
+/give @s big_dog_bark:ding_dong_chicken_meat 64
+
+# 获得附魔骨头(驯服特殊大狗用)
+/give @s minecraft:bone[enchantments={levels:{"big_dog_bark:big_dog_bark":1}}] 64
+
+# 召唤狼并驯服为特殊大狗后,喂食叮咚鸡肉成长(每 3 点升一阶段)
+# 查看最近狼 NBT(确认 BigDogBark.IsBigDog 与 BigDogBark.GrowthPoints)
+/data get entity @e[type=minecraft:wolf,limit=1,sort=nearest]
+
+# 查看狼的缩放属性(验证阶段倍率)
+/attribute @e[type=minecraft:wolf,limit=1,sort=nearest] minecraft:generic.scale get
 ```
 
 使用方式:铁砧左侧放普通小麦种子、右侧放“叮咚鸡 I”附魔书,取出附魔种子;

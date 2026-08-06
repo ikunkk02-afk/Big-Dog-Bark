@@ -9,4 +9,10 @@ public interface BigDogWolfAccess {
 	boolean bigDogBark$isBigDog();
 
 	void bigDogBark$setBigDog(boolean bigDog);
+
+	/** 当前成长进度(0～{@link BigDogGrowth#MAX_GROWTH_POINTS}),普通狼默认 0。 */
+	int bigDogBark$getGrowthPoints();
+
+	/** 设置成长进度,实现方负责限制在 0～最大进度。 */
+	void bigDogBark$setGrowthPoints(int growthPoints);
 }
