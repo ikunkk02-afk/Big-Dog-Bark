@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "big_dog_bark",
+	"version": "${version}",
+	"name": "Big Dog Bark",
+	"description": "大狗叫 (Big Dog Bark): 用附魔骨头驯服特殊大狗,与它并肩作战的娱乐模组。",
+	"authors": [
+		"寿云"
+	],
+	"contact": {
+		"homepage": "https://github.com/ikunkk02-afk/Big-Dog-Bark",
+		"sources": "https://github.com/ikunkk02-afk/Big-Dog-Bark",
+		"issues": "https://github.com/ikunkk02-afk/Big-Dog-Bark/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/big_dog_bark/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.shouyun.bigdogbark.BigDogBark"
+		],
+		"client": [
+			"com.shouyun.bigdogbark.client.BigDogBarkClient"
+		],
+		"fabric-datagen": [
+			"com.shouyun.bigdogbark.client.BigDogBarkDataGenerator"
+		]
+	},
+	"mixins": [
+		"big_dog_bark.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
