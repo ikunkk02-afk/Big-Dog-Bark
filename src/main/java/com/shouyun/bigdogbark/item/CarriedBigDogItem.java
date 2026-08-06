@@ -49,8 +49,13 @@ public class CarriedBigDogItem extends Item {
 	@Override
 	public ActionResult useOnBlock(ItemUsageContext context) {
 		PlayerEntity player = context.getPlayer();
+		ItemStack stack = context.getStack();
+		// 防御:count 已为 0 的残留栈(快速连点/同步竞态)不可再次使用,防止重复放下
+		if (player == null || stack.isEmpty()) {
+			return ActionResult.PASS;
+		}
 		// 普通右键(不下蹲):PASS,为后续蓄能和机枪功能预留
-		if (player == null || !player.isSneaking()) {
+		if (!player.isSneaking()) {
 			return ActionResult.PASS;
 		}
 		World world = context.getWorld();
@@ -115,6 +120,10 @@ public class CarriedBigDogItem extends Item {
 			return ActionResult.SUCCESS;
 		}
 		stack.decrement(1);
+		// 立即清空空栈槽位,防止残留 count=0 的栈被再次使用(重复放下/复制)
+		if (stack.isEmpty()) {
+			player.setStackInHand(context.getHand(), ItemStack.EMPTY);
+		}
 		// 10. 物品自定义名称(铁砧重命名)优先作为狼的新名称;未重命名则恢复 WolfData 中的原名
 		Text itemCustomName = stack.get(DataComponentTypes.CUSTOM_NAME);
 		if (itemCustomName != null) {
