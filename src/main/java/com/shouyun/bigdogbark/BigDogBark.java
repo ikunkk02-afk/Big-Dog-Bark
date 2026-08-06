@@ -4,6 +4,7 @@ import com.shouyun.bigdogbark.entity.BigDogWolfTamingHandler;
 import com.shouyun.bigdogbark.entity.DingDongChickenDeathHandler;
 import com.shouyun.bigdogbark.entity.DingDongChickenInteractionHandler;
 import com.shouyun.bigdogbark.entity.BigDogGrowthInteractionHandler;
+import com.shouyun.bigdogbark.entity.BigDogPickupInteractionHandler;
 import com.shouyun.bigdogbark.item.BigDogBarkItems;
 import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.fabricmc.api.ModInitializer;
@@ -33,6 +34,9 @@ public class BigDogBark implements ModInitializer {
 
 		// 第三阶段:叮咚鸡肉喂食特殊大狗成长(物品先注册,再注册交互处理器)
 		BigDogGrowthInteractionHandler.register();
+
+		// 第四阶段:抱起与放下完全成长大狗(注册在成长交互之后,手持鸡肉时优先喂食)
+		BigDogPickupInteractionHandler.register();
 
 		LOGGER.info("Big Dog Bark (大狗叫) initialized.");
 	}

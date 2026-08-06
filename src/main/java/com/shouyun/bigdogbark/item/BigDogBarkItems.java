@@ -32,11 +32,18 @@ public final class BigDogBarkItems {
 		}
 	};
 
+	/**
+	 * 抱起的大狗:最大堆叠 1、防火、不可食用、当前无耐久与主动右键攻击。
+	 * 不加入普通创造模式物品栏(空物品无有效数据,不能生成狼)。
+	 */
+	public static final Item CARRIED_BIG_DOG = new CarriedBigDogItem(new Item.Settings().maxCount(1).fireproof());
+
 	private BigDogBarkItems() {
 	}
 
 	public static void register() {
 		Registry.register(Registries.ITEM, BigDogBark.id("ding_dong_chicken_meat"), DING_DONG_CHICKEN_MEAT);
+		Registry.register(Registries.ITEM, BigDogBark.id("carried_big_dog"), CARRIED_BIG_DOG);
 		// 加入原版“原材料”创造模式物品栏
 		ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS)
 				.register(entries -> entries.add(DING_DONG_CHICKEN_MEAT));
