@@ -477,13 +477,12 @@ public class CarriedBigDogItem extends Item {
 		BlockPos clickedPos = context.getBlockPos();
 		Direction side = context.getSide();
 		Vec3d spawnPos = Vec3d.ofCenter(clickedPos.offset(side));
-		wolf.setPosition(spawnPos);
 		// 5. 恢复数据(内部验证 IsBigDog / GrowthPoints,readNbt 触发 Mixin 自动应用缩放)
 		if (!CarriedBigDogData.restoreWolfData(stack, wolf)) {
 			sendActionBar(player, "action.big_dog_bark.carried_dog_invalid_data");
 			return ActionResult.SUCCESS;
 		}
-		// 5.5 武器模式:物品当前带“蓄能 I” → CHARGE;带“机枪” → MACHINE_GUN;否则 NONE
+		// 5.5 武器模式:物品当前带"蓄能 I" → CHARGE;带"机枪" → MACHINE_GUN;否则 NONE
 		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
 			BigDogWolfUtil.setWeaponMode(wolf, BigDogWeaponMode.MACHINE_GUN);
 		} else if (BigDogEnchantmentUtil.hasCharge(stack, player.getRegistryManager())) {
@@ -498,16 +497,18 @@ public class CarriedBigDogItem extends Item {
 		wolf.setTarget(null);
 		wolf.setAngerTime(0);
 		wolf.getNavigation().stop();
-		// 7. 按完全成长重新应用缩放并重算碰撞箱
+		// 7. 按完全成长重新应用缩放并重算碰撞箱(幂等:最后定稿 2× 尺寸)
 		BigDogWolfUtil.applyGrowthScale(wolf);
 		wolf.calculateDimensions();
-		// 8. 按 2 倍大狗实际碰撞箱检查空间与边界
+		// 8. 用最终 2× 尺寸重设位置(calculateDimensions 扩箱以 min 角为锚点,需重居中)
+		wolf.setPosition(spawnPos);
+		// 9. 按 2 倍大狗实际碰撞箱检查空间与边界
 		Box box = wolf.getBoundingBox();
 		if (!world.isSpaceEmpty(box) || !world.getWorldBorder().contains(box.getCenter())) {
 			sendActionBar(player, "action.big_dog_bark.not_enough_place_space");
 			return ActionResult.SUCCESS;
 		}
-		// 9. 生成成功才消耗物品(创造模式也消耗,防止无限复制大狗)
+		// 10. 生成成功才消耗物品(创造模式也消耗,防止无限复制大狗)
 		if (!world.spawnEntity(wolf)) {
 			sendActionBar(player, "action.big_dog_bark.not_enough_place_space");
 			return ActionResult.SUCCESS;
@@ -517,12 +518,12 @@ public class CarriedBigDogItem extends Item {
 		if (stack.isEmpty()) {
 			player.setStackInHand(context.getHand(), ItemStack.EMPTY);
 		}
-		// 10. 物品自定义名称(铁砧重命名)优先作为狼的新名称;未重命名则恢复 WolfData 中的原名
+		// 11. 物品自定义名称(铁砧重命名)优先作为狼的新名称;未重命名则恢复 WolfData 中的原名
 		Text itemCustomName = stack.get(DataComponentTypes.CUSTOM_NAME);
 		if (itemCustomName != null) {
 			wolf.setCustomName(itemCustomName);
 		}
-		// 11. 反馈:原版羊毛放置声 + 少量粒子 + 动作栏提示(服务端广播,距离衰减)
+		// 12. 反馈:原版羊毛放置声 + 少量粒子 + 动作栏提示(服务端广播,距离衰减)
 		world.playSound(null, wolf.getBlockPos(), SoundEvents.BLOCK_WOOL_PLACE, SoundCategory.BLOCKS, 1.0F, 1.0F);
 		world.spawnParticles(ParticleTypes.HAPPY_VILLAGER,
 				wolf.getX(), wolf.getY() + wolf.getHeight() * 0.5D, wolf.getZ(),
