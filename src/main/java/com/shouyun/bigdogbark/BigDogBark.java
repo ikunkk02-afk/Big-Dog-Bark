@@ -1,6 +1,8 @@
 package com.shouyun.bigdogbark;
 
 import com.shouyun.bigdogbark.entity.BigDogBarkEntityTypes;
+import com.shouyun.bigdogbark.entity.BigDogCallingHandler;
+import com.shouyun.bigdogbark.entity.BigDogPackDefenseHandler;
 import com.shouyun.bigdogbark.entity.BigDogPickupInteractionHandler;
 import com.shouyun.bigdogbark.entity.BigDogWolfTamingHandler;
 import com.shouyun.bigdogbark.entity.DingDongChickenDeathHandler;
@@ -50,6 +52,9 @@ public class BigDogBark implements ModInitializer {
 
 		// 第六阶段:被驯服大狗自身/主人受伤时召唤护卫狼群
 		BigDogPackDefenseHandler.register();
+
+		// 第七阶段:大狗召唤唱片播放时吸引附近狼和鸡
+		BigDogCallingHandler.register();
 
 		LOGGER.info("Big Dog Bark (大狗叫) initialized.");
 	}

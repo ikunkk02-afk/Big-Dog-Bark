@@ -46,6 +46,9 @@ public final class BigDogBarkSoundEvents {
 	/** 狼日常叫声(替换原版 ENTITY_WOLF_AMBIENT,所有狼生效)。 */
 	public static final SoundEvent DOG_AMBIENT = register("dog_ambient");
 
+	/** 大狗召唤唱片(big_dog_calling)。 */
+	public static final SoundEvent MUSIC_DISC_BIG_DOG_CALLING = register("music_disc.big_dog_calling");
+
 	private BigDogBarkSoundEvents() {
 	}
 

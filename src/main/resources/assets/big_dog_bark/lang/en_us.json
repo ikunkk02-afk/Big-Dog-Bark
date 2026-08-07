@@ -52,5 +52,9 @@
   "subtitles.big_dog_bark.dog_machine_gun": "Big dog fires",
   "subtitles.big_dog_bark.dog_tame_success": "Big dog tamed",
   "subtitles.big_dog_bark.dog_tame_failure": "Big dog resists taming",
-  "subtitles.big_dog_bark.dog_ambient": "Dog barks"
+  "subtitles.big_dog_bark.dog_ambient": "Dog barks",
+  "subtitles.big_dog_bark.music_disc_big_dog_calling": "Music Disc: Big Dog Calling",
+  "item.big_dog_bark.music_disc_big_dog_calling": "Music Disc",
+  "item.big_dog_bark.music_disc_big_dog_calling.desc": "Ritual Collapse - Big Dog Barking",
+  "jukebox_song.big_dog_bark.big_dog_calling": "Ritual Collapse - Big Dog Barking"
 }

@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"WolfEntityMixin",
-		"ChickenEntityMixin"
+		"ChickenEntityMixin",
+		"JukeboxBlockEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

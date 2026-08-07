@@ -52,5 +52,9 @@
   "subtitles.big_dog_bark.dog_machine_gun": "大狗:机枪发射",
   "subtitles.big_dog_bark.dog_tame_success": "大狗:驯服成功",
   "subtitles.big_dog_bark.dog_tame_failure": "大狗:驯服失败",
-  "subtitles.big_dog_bark.dog_ambient": "狗:叫声"
+  "subtitles.big_dog_bark.dog_ambient": "狗:叫声",
+  "subtitles.big_dog_bark.music_disc_big_dog_calling": "唱片:大狗召唤",
+  "item.big_dog_bark.music_disc_big_dog_calling": "音乐唱片",
+  "item.big_dog_bark.music_disc_big_dog_calling.desc": "礼崩乐不坏 - 大狗到底叫不叫",
+  "jukebox_song.big_dog_bark.big_dog_calling": "礼崩乐不坏 - 大狗到底叫不叫"
 }

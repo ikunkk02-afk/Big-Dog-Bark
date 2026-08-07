@@ -97,5 +97,14 @@
         "stream": false
       }
     ]
+  },
+  "music_disc.big_dog_calling": {
+    "subtitle": "subtitles.big_dog_bark.music_disc_big_dog_calling",
+    "sounds": [
+      {
+        "name": "big_dog_bark:records/big_dog_calling",
+        "stream": true
+      }
+    ]
   }
 }
