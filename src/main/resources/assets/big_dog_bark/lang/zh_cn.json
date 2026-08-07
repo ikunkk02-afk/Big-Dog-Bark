@@ -42,7 +42,7 @@
   "action.big_dog_bark.charge_too_low": "蓄能不足",
   "action.big_dog_bark.charge_ready": "蓄能完成",
   "action.big_dog_bark.charge_danger": "警告:蓄能即将过载!",
-  "action.big_dog_bark.charge_misfire": "蓄能过载,大狗炸膛了!",
+  "action.big_dog_bark.charge_misfire": "蓄能过载!大狗炸膛强行发射了!",
   "action.big_dog_bark.charge_invalid_dog": "大狗数据无效,无法蓄能",
   "action.big_dog_bark.launch_failed": "发射失败,大狗没有飞出去"
 }

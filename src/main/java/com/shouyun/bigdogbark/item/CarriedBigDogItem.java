@@ -81,6 +81,9 @@ public class CarriedBigDogItem extends Item {
 	/** 炸膛后冷却 Tick(3 秒)。 */
 	public static final int MISFIRE_COOLDOWN_TICKS = 60;
 
+	/** 发射后冷却 Tick(1 秒,限制射速;大狗不消耗,可反复蓄能发射)。 */
+	public static final int LAUNCH_COOLDOWN_TICKS = 20;
+
 	/** 炸膛爆炸威力(视觉约 2～3 级,不破坏地形)。 */
 	private static final float MISFIRE_EXPLOSION_POWER = 3.0F;
 
@@ -153,7 +156,9 @@ public class CarriedBigDogItem extends Item {
 		// 与 1.21.1 原版弓相同的起手模式:设置当前手并返回 consume
 		user.setCurrentHand(hand);
 		if (!world.isClient) {
-			world.playSound(null, user.getBlockPos(), BigDogBarkSoundEvents.DOG_CHARGE, SoundCategory.PLAYERS, 1.0F, 1.0F);
+			// playSoundFromEntity:音效跟随玩家实体移动,不会停留在原地
+			world.playSoundFromEntity(null, user, BigDogBarkSoundEvents.DOG_CHARGE,
+					SoundCategory.PLAYERS, 1.0F, 1.0F);
 		}
 		return TypedActionResult.consume(stack);
 	}
@@ -166,7 +171,8 @@ public class CarriedBigDogItem extends Item {
 		int elapsed = MAX_USE_TIME - remainingUseTicks;
 		// 40 Tick:蓄能完成(阈值点触发,一次蓄力只播放一次)
 		if (elapsed == READY_CHARGE_TICKS) {
-			world.playSound(null, player.getBlockPos(), BigDogBarkSoundEvents.DOG_CHARGE_READY,
+			// playSoundFromEntity:音效跟随玩家实体移动
+			world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
 					SoundCategory.PLAYERS, 1.0F, 1.0F);
 			sendActionBar(player, "action.big_dog_bark.charge_ready");
 		} else if (elapsed == DANGER_CHARGE_TICKS) {
@@ -297,9 +303,9 @@ public class CarriedBigDogItem extends Item {
 	}
 
 	/**
-	 * 发射大狗炮(服务端权威,防复制顺序):
-	 * 复验 → 复制完整栈 → 创建投射物 → 放入物品/主人/速度 → spawnEntity 成功后才消耗手中物品。
-	 * 任何失败路径玩家都保留大狗,不可能出现“手里还有狗 + 世界又飞出去一只狗”。
+	 * 发射大狗炮(服务端权威):从玩家眼前(狗嘴方向)射出<b>声波发射体</b>,
+	 * 大狗本体<b>不消耗、不离开玩家手中</b>,可反复蓄能发射。
+	 * 声波沿途扇形摧毁方块并对生物造成冲撞伤害;spawnEntity 失败则直接提示(无任何损失)。
 	 */
 	private void launchBigDog(ServerWorld world, ServerPlayerEntity player, ItemStack stack, int chargeTicks) {
 		// 发射前最终校验(竞态防御):数据 / 主人 / 附魔
@@ -315,58 +321,38 @@ public class CarriedBigDogItem extends Item {
 		if (BigDogEnchantmentUtil.getChargeLevel(stack, player.getRegistryManager()) < 1) {
 			return;
 		}
-		// 1. 复制完整大狗物品(OwnerUuid / WolfData / 附魔 / 名称等全部组件)
-		ItemStack projectileStack = stack.copyWithCount(1);
-		// 2. 创建投射物并初始化
+		// 1. 创建声波发射体(从玩家眼睛前方一格射出,即“狗嘴”位置)
 		LaunchedBigDogEntity projectile = BigDogBarkEntityTypes.LAUNCHED_BIG_DOG.create(world);
 		if (projectile == null) {
 			sendActionBar(player, "action.big_dog_bark.launch_failed");
 			return;
 		}
 		Vec3d eye = player.getEyePos();
-		projectile.setPosition(eye.x, eye.y - 0.1D, eye.z);
-		projectile.setOwner(player);
-		projectile.setCarriedStack(projectileStack);
-		projectile.setChargePower(chargeTicks);
 		Vec3d look = player.getRotationVec(1.0F);
-		double speed = computeLaunchSpeed(chargeTicks);
-		projectile.setVelocity(look.x * speed, look.y * speed, look.z * speed);
-		// 3. 生成成功才消耗(失败:大狗仍留在玩家手中)
+		projectile.setPosition(eye.x + look.x, eye.y - 0.1D + look.y, eye.z + look.z);
+		projectile.setOwner(player);
+		projectile.setChargePower(chargeTicks);
+		// 匀速 1 格/tick 直线推进(约 45 格射程),蓄能只影响伤害/击退
+		projectile.setVelocity(look.x, look.y, look.z);
+		// 2. 生成失败:无任何损失(大狗仍在手中,不复制)
 		if (!world.spawnEntity(projectile)) {
 			sendActionBar(player, "action.big_dog_bark.launch_failed");
 			return;
 		}
-		// 4. 最后清空玩家手中的大狗(与放狗相同的防复制模式)
-		stack.decrement(1);
-		if (stack.isEmpty()) {
-			player.setStackInHand(player.getActiveHand(), ItemStack.EMPTY);
-		}
-		world.playSound(null, player.getX(), player.getY(), player.getZ(),
-				BigDogBarkSoundEvents.DOG_LAUNCH, SoundCategory.PLAYERS, 1.0F, 1.0F);
+		// 3. 大狗留在玩家手中;发射后短冷却限制射速
+		player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
+		world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_LAUNCH,
+				SoundCategory.PLAYERS, 1.0F, 1.0F);
 	}
 
 	/**
-	 * 发射速度:16 Tick ≈ 1.5,40 Tick ≈ 2.5,70 Tick ≈ 3.5,89 Tick ≈ 4.0,
-	 * 按归一化蓄能平滑插值,绝不直接等于 chargeTicks(避免穿墙/碰撞失效)。
-	 */
-	private static double computeLaunchSpeed(int chargeTicks) {
-		float normalized = normalizedCharge(chargeTicks);
-		return 1.5D + 2.5D * normalized;
-	}
-
-	/** 归一化蓄能:0(16 Tick)～1(89 Tick)。 */
-	private static float normalizedCharge(int chargeTicks) {
-		return MathHelper.clamp((chargeTicks - MIN_CHARGE_TICKS)
-				/ (float) (OVERCHARGE_TICKS - 1 - MIN_CHARGE_TICKS), 0.0F, 1.0F);
-	}
-
-	/**
-	 * 过载炸膛(90 Tick 自动触发,服务端):
+	 * 炸膛(90 Tick 自动触发,服务端):
 	 * 停止使用 → 原版爆炸(威力 3,不破坏地形/不点火,原版爆炸声 + 粒子)→
-	 * 玩家受伤 + 明显击退 → 动作栏提示 → 3 秒物品冷却。大狗始终留在玩家手中。
+	 * 玩家受伤 + 明显击退 → <b>强行发射</b>最大威力声波(蓄能按 89 Tick 结算)→
+	 * 动作栏提示 → 3 秒物品冷却。大狗始终留在玩家手中。
 	 */
 	private void misfire(ServerWorld world, ServerPlayerEntity player, ItemStack stack) {
-		// 先停止使用:触发 onStoppedUsing,其内部用 elapsed >= 90 拦截,保证炸膛后绝不发射
+		// 先停止使用:触发 onStoppedUsing,其内部用 elapsed >= 90 拦截,保证不二次发射
 		player.stopUsingItem();
 		// 原版爆炸:ExplosionSourceType.NONE → DestructionType.KEEP → 不破坏方块、不点火
 		// 声音与粒子通过 ExplosionS2CPacket 同步给客户端(原版爆炸声 + 原版爆炸粒子)
@@ -381,6 +367,20 @@ public class CarriedBigDogItem extends Item {
 		Vec3d look = player.getRotationVec(1.0F);
 		player.addVelocity(-look.x * MISFIRE_KNOCKBACK, 0.5D, -look.z * MISFIRE_KNOCKBACK);
 		player.velocityModified = true;
+		// 强行发射:过载能量以最大威力声波射出(蓄能按 89 Tick 结算,伤害最高 16)
+		// 与正常发射共用创建逻辑,但不再单独设置发射冷却(炸膛冷却 3 秒优先)
+		LaunchedBigDogEntity projectile = BigDogBarkEntityTypes.LAUNCHED_BIG_DOG.create(world);
+		if (projectile != null) {
+			Vec3d eye = player.getEyePos();
+			projectile.setPosition(eye.x + look.x, eye.y - 0.1D + look.y, eye.z + look.z);
+			projectile.setOwner(player);
+			projectile.setChargePower(OVERCHARGE_TICKS - 1);
+			projectile.setVelocity(look.x, look.y, look.z);
+			if (world.spawnEntity(projectile)) {
+				world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_LAUNCH,
+						SoundCategory.PLAYERS, 1.0F, 1.0F);
+			}
+		}
 		sendActionBar(player, "action.big_dog_bark.charge_misfire");
 		// 3 秒内不能再次蓄能
 		player.getItemCooldownManager().set(stack.getItem(), MISFIRE_COOLDOWN_TICKS);
