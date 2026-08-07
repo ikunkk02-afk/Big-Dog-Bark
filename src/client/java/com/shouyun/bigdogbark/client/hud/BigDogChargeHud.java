@@ -58,10 +58,13 @@ public final class BigDogChargeHud {
 					&& !player.getItemCooldownManager().isCoolingDown(stack.getItem())) {
 				showing = true;
 				int elapsed = CarriedBigDogItem.MAX_USE_TIME - player.getItemUseTimeLeft();
-				// 机枪模式:进度条 0→40 满,蓄能模式:0→90 渐进
-				int cap = BigDogEnchantmentUtil.hasMachineGunInComponents(stack)
-						? CarriedBigDogItem.READY_CHARGE_TICKS : CarriedBigDogItem.OVERCHARGE_TICKS;
-				float progress = MathHelper.clamp(elapsed / (float) cap, 0.0F, 1.0F);
+				boolean isMG = BigDogEnchantmentUtil.hasMachineGunInComponents(stack);
+				// 普通蓄能模式:0→90;机枪蓄能阶段:0→40;机枪开火阶段:40→0 消耗。
+				int cap = isMG ? CarriedBigDogItem.MACHINE_GUN_ENERGY_TICKS
+						: CarriedBigDogItem.OVERCHARGE_TICKS;
+				float progress = isMG && CarriedBigDogItem.isClientMachineGunFiring(player)
+						? MathHelper.clamp(1.0F - elapsed / (float) cap, 0.0F, 1.0F)
+						: MathHelper.clamp(elapsed / (float) cap, 0.0F, 1.0F);
 				int width = context.getScaledWindowWidth();
 				int height = context.getScaledWindowHeight();
 				int x = (width - BAR_WIDTH) / 2;
@@ -71,7 +74,6 @@ public final class BigDogChargeHud {
 				// 进度填充
 				int fill = (int) (BAR_WIDTH * progress);
 				if (fill > 0) {
-					boolean isMG = BigDogEnchantmentUtil.hasMachineGunInComponents(stack);
 					context.fill(x, y, x + fill, y + BAR_HEIGHT, colorFor(elapsed, isMG));
 				}
 			}

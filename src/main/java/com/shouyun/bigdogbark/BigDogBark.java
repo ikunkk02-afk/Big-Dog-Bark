@@ -8,6 +8,7 @@ import com.shouyun.bigdogbark.entity.DingDongChickenInteractionHandler;
 import com.shouyun.bigdogbark.entity.BigDogGrowthInteractionHandler;
 import com.shouyun.bigdogbark.entity.BigDogPickupInteractionHandler;
 import com.shouyun.bigdogbark.item.BigDogBarkItems;
+import com.shouyun.bigdogbark.network.BigDogBarkNetworking;
 import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
@@ -25,6 +26,9 @@ public class BigDogBark implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		// 机枪满蓄能/能量耗尽后的“真实松开右键”握手。
+		BigDogBarkNetworking.register();
+
 		// 第一阶段:附魔骨头驯服狼(保持原有注册不变)
 		BigDogWolfTamingHandler.register();
 

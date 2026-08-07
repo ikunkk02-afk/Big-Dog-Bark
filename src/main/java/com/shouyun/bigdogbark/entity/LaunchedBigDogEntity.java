@@ -150,6 +150,7 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	 * 每 tick 处理波前前后 LAYER_THICKNESS 厚的锥段,累积覆盖整条路径。
 	 */
 	private void destroyBlocksInFan(ServerWorld world, Vec3d dir) {
+		Vec3d unitDir = dir.normalize();
 		Vec3d pos = this.getPos();
 		double distance = this.origin.distanceTo(pos);
 		double tanHalfAngle = Math.tan(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
@@ -161,7 +162,7 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 				for (int dz = -r; dz <= r; dz++) {
 					BlockPos bp = center.add(dx, dy, dz);
 					Vec3d rel = Vec3d.ofCenter(bp).subtract(this.origin);
-					double t = rel.dotProduct(dir); // 沿飞行方向的投影距离
+					double t = rel.dotProduct(unitDir); // 沿飞行方向的投影距离
 					if (t < 0.0D || t > distance + LAYER_THICKNESS) {
 						continue; // 在发射点后面或超出波前太远
 					}
@@ -193,14 +194,16 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	 * 不伤害发射者本人。
 	 */
 	private void damageEntitiesInCone(ServerWorld world, Vec3d dir) {
+		// dir 是 velocity(可能速度 != 1),锥形判定用归一化方向;击退还用原速度保持手感。
+		Vec3d unitDir = dir.normalize();
 		double distance = this.origin.distanceTo(this.getPos());
 		double tanHalfAngle = Math.tan(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
 		double coneRadius = BASE_RADIUS + distance * tanHalfAngle;
-		// 锥体包围盒(扫描范围内的生物)
+		// 锥体外接立方体:以 origin→currentPos 的中点为球心,覆盖整条线段
+		Vec3d mid = this.origin.add(this.getPos()).multiply(0.5D);
 		Box box = new Box(
-				this.origin.getX() - coneRadius, this.origin.getY() - coneRadius, this.origin.getZ() - coneRadius,
-				this.origin.getX() + coneRadius, this.origin.getY() + coneRadius, this.origin.getZ() + coneRadius)
-				.offset(dir.multiply(distance * 0.5)); // 盒体居中于锥体中间
+				mid.getX() - coneRadius, mid.getY() - coneRadius, mid.getZ() - coneRadius,
+				mid.getX() + coneRadius, mid.getY() + coneRadius, mid.getZ() + coneRadius);
 		for (Entity entity : world.getOtherEntities(this, box, e -> e instanceof LivingEntity)) {
 			if (entity == this.getOwner()) {
 				continue;
@@ -210,7 +213,7 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 			}
 			LivingEntity living = (LivingEntity) entity;
 			Vec3d rel = living.getPos().subtract(this.origin);
-			double t = rel.dotProduct(dir);
+			double t = rel.dotProduct(unitDir);
 			if (t < 0.0D || t > distance + 2.0D) {
 				continue; // 在发射点后面或超出波前
 			}

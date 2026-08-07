@@ -86,14 +86,26 @@ public class CarriedBigDogItem extends Item {
 	/** 发射后冷却 Tick(1 秒,限制射速;大狗不消耗,可反复蓄能发射)。 */
 	public static final int LAUNCH_COOLDOWN_TICKS = 20;
 
-	/** 机枪连射间隔(Tick):蓄能达到 40 Tick 后每 4 Tick 自动射一发。 */
+	/** 机枪连射间隔(Tick):开火阶段每 4 Tick 射一发(5 发/秒)。 */
 	public static final int MACHINE_GUN_FIRE_INTERVAL = 4;
 
-	/** 机枪每发子弹消耗的蓄能 Tick:消耗速度 > 自然恢复,持续射击会耗尽能量。 */
-	public static final int MACHINE_GUN_COST_PER_SHOT = 10;
+	/** 机枪满能量可持续开火的 Tick 数:蓄能 40 Tick,开火也消耗 40 Tick。 */
+	public static final int MACHINE_GUN_ENERGY_TICKS = READY_CHARGE_TICKS;
 
-	/** 每个玩家当前机枪连射已消耗的子弹数(松开/死亡/断线时清除)。 */
-	private static final Map<UUID, Integer> MACHINE_GUN_FIRE_COUNT = new HashMap<>();
+	/** 机枪两阶段输入状态；客户端和服务端各自维护，不能写入物品持久化数据。 */
+	private enum MachineGunPhase {
+		CHARGING,
+		AWAITING_RELEASE_TO_FIRE,
+		READY_TO_FIRE,
+		FIRING,
+		AWAITING_RELEASE_AFTER_DEPLETED
+	}
+
+	private record MachineGunState(Hand hand, MachineGunPhase phase) {
+	}
+
+	private static final Map<UUID, MachineGunState> SERVER_MACHINE_GUN_STATES = new HashMap<>();
+	private static final Map<UUID, MachineGunState> CLIENT_MACHINE_GUN_STATES = new HashMap<>();
 
 	/** 炸膛爆炸威力(视觉约 2～3 级,不破坏地形)。 */
 	private static final float MISFIRE_EXPLOSION_POWER = 3.0F;
@@ -130,6 +142,7 @@ public class CarriedBigDogItem extends Item {
 			return ActionResult.PASS;
 		}
 		World world = context.getWorld();
+		clearMachineGunState(world, player);
 		if (world.isClient) {
 			// 客户端:取消本地方块使用动画并发送数据包,实际放回由服务端权威执行
 			return ActionResult.success(true);
@@ -145,11 +158,13 @@ public class CarriedBigDogItem extends Item {
 		}
 		// 下蹲:不启动蓄能(下蹲右键=放狗,由 useOnBlock 处理;下蹲右键空气无操作)
 		if (user.isSneaking()) {
+			clearMachineGunState(world, user);
 			return TypedActionResult.pass(stack);
 		}
 		// 数据无效 / 非主人:FAIL 让客户端发送交互包,服务端给出明确提示
 		if (stack.isOf(BigDogBarkItems.CARRIED_BIG_DOG)) {
 			if (!CarriedBigDogData.hasValidData(stack)) {
+				clearMachineGunState(world, user);
 				if (!world.isClient) {
 					sendActionBar((ServerPlayerEntity) user, "action.big_dog_bark.charge_invalid_dog");
 				}
@@ -157,20 +172,25 @@ public class CarriedBigDogItem extends Item {
 			}
 			Optional<UUID> ownerUuid = CarriedBigDogData.getOwnerUuid(stack);
 			if (ownerUuid.isEmpty() || !ownerUuid.get().equals(user.getUuid())) {
+				clearMachineGunState(world, user);
 				if (!world.isClient) {
 					sendActionBar((ServerPlayerEntity) user, "action.big_dog_bark.dog_not_owner");
 				}
 				return TypedActionResult.fail(stack);
 			}
 		}
+		// 机枪模式是“蓄满自动停止 → 松开 → 再次按住开火并耗尽能量”的独立两阶段状态机。
+		if (BigDogEnchantmentUtil.hasMachineGunInComponents(stack)) {
+			return useMachineGun(world, user, hand, stack);
+		}
+		clearMachineGunState(world, user);
 		// 无蓄能附魔 / 观战者 / 冷却中:静默 PASS(不干扰旧交互)
 		if (!canStartCharging(world, user, stack)) {
 			return TypedActionResult.pass(stack);
 		}
-		// 与 1.21.1 原版弓相同的起手模式:设置当前手并返回 consume
+		// 普通蓄能附魔保持原来的弓式逻辑:按住蓄能,松开发射,过载会炸膛。
 		user.setCurrentHand(hand);
 		if (!world.isClient) {
-			// playSoundFromEntity:音效跟随玩家实体移动,不会停留在原地
 			world.playSoundFromEntity(null, user, BigDogBarkSoundEvents.DOG_CHARGE,
 					SoundCategory.PLAYERS, 1.0F, 1.0F);
 		}
@@ -179,27 +199,18 @@ public class CarriedBigDogItem extends Item {
 
 	@Override
 	public void usageTick(World world, LivingEntity user, ItemStack stack, int remainingUseTicks) {
+		int elapsed = MAX_USE_TIME - remainingUseTicks;
+
+		// 机枪模式由临时状态区分“蓄能阶段”和“开火耗能阶段”。
+		if (BigDogEnchantmentUtil.hasMachineGunInComponents(stack)) {
+			handleMachineGunUsageTick(world, user, stack, elapsed);
+			return;
+		}
+
 		if (world.isClient || !(user instanceof ServerPlayerEntity player)) {
 			return;
 		}
-		int elapsed = MAX_USE_TIME - remainingUseTicks;
-		// 机枪模式:蓄能 40 Tick 后进入连射,每发消耗能量
-		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
-			int fireCount = MACHINE_GUN_FIRE_COUNT.getOrDefault(player.getUuid(), 0);
-			int energy = elapsed - fireCount * MACHINE_GUN_COST_PER_SHOT;
-			if (elapsed == READY_CHARGE_TICKS) {
-				world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
-						SoundCategory.PLAYERS, 1.0F, 1.0F);
-				sendActionBar(player, "action.big_dog_bark.machine_gun_ready");
-			}
-			if (elapsed >= READY_CHARGE_TICKS && energy >= MACHINE_GUN_COST_PER_SHOT
-					&& (elapsed - READY_CHARGE_TICKS) % MACHINE_GUN_FIRE_INTERVAL == 0) {
-				fireMachineGunBullet((ServerWorld) world, player, stack);
-				MACHINE_GUN_FIRE_COUNT.put(player.getUuid(), fireCount + 1);
-			}
-			return; // 机枪模式不触发蓄能/炸膛逻辑
-		}
-		// 蓄能模式:40 Tick 提示,70 Tick 警告,90 Tick 炸膛
+		// 普通蓄能模式保持不变:40 Tick 提示,70 Tick 警告,90 Tick 炸膛
 		if (elapsed == READY_CHARGE_TICKS) {
 			world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
 					SoundCategory.PLAYERS, 1.0F, 1.0F);
@@ -214,34 +225,230 @@ public class CarriedBigDogItem extends Item {
 		}
 	}
 
-	@Override
-	public void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks) {
-		if (world.isClient || !(user instanceof ServerPlayerEntity player)) {
+	private void handleMachineGunUsageTick(World world, LivingEntity user, ItemStack stack, int elapsed) {
+		Map<UUID, MachineGunState> states = machineGunStates(world);
+		MachineGunState state = states.get(user.getUuid());
+		if (state == null || state.hand() != user.getActiveHand()) {
+			user.stopUsingItem();
 			return;
 		}
-		// 玩家死亡/已移除时不发射
+
+		if (state.phase() == MachineGunPhase.CHARGING) {
+			if (elapsed < MACHINE_GUN_ENERGY_TICKS) {
+				return;
+			}
+			states.put(user.getUuid(), new MachineGunState(state.hand(), MachineGunPhase.AWAITING_RELEASE_TO_FIRE));
+			if (!world.isClient && user instanceof ServerPlayerEntity player) {
+				world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
+						SoundCategory.PLAYERS, 1.0F, 1.0F);
+				sendActionBar(player, "action.big_dog_bark.machine_gun_ready");
+			}
+			// 客户端和服务端都停止，确保蓄满时手部动作/进度条立即打断。
+			user.stopUsingItem();
+			return;
+		}
+
+		if (state.phase() == MachineGunPhase.FIRING) {
+			if (elapsed >= MACHINE_GUN_ENERGY_TICKS) {
+				states.put(user.getUuid(),
+						new MachineGunState(state.hand(), MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED));
+				if (!world.isClient && user instanceof ServerPlayerEntity player) {
+					sendActionBar(player, "action.big_dog_bark.machine_gun_depleted");
+					player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
+				}
+				user.stopUsingItem();
+				return;
+			}
+			// use() 已立即发射第 1 发；之后在 4,8,...,36 Tick 再发 9 发，共 10 发。
+			if (!world.isClient && user instanceof ServerPlayerEntity player
+					&& elapsed > 0 && elapsed % MACHINE_GUN_FIRE_INTERVAL == 0) {
+				fireMachineGunBullet((ServerWorld) world, player, stack);
+			}
+			return;
+		}
+
+		// 等待松开/等待下次按下阶段不应仍处于使用状态；防御性停止，避免状态串线。
+		user.stopUsingItem();
+	}
+
+	@Override
+	public void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks) {
+		// 客户端手动松开蓄能/开火时清理本地阶段；自动停止前已先切换到等待阶段，因此会保留。
+		if (world.isClient) {
+			if (user instanceof PlayerEntity player
+					&& BigDogEnchantmentUtil.hasMachineGunInComponents(stack)) {
+				MachineGunState state = CLIENT_MACHINE_GUN_STATES.get(player.getUuid());
+				if (state != null
+						&& state.phase() != MachineGunPhase.AWAITING_RELEASE_TO_FIRE
+						&& state.phase() != MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED) {
+					CLIENT_MACHINE_GUN_STATES.remove(player.getUuid());
+				}
+			}
+			return;
+		}
+		if (!(user instanceof ServerPlayerEntity player)) {
+			return;
+		}
+		// 玩家死亡/已移除时不发射，并清理所有临时机枪状态。
 		if (player.isRemoved() || !player.isAlive()) {
+			SERVER_MACHINE_GUN_STATES.remove(player.getUuid());
 			return;
 		}
 		int elapsed = MAX_USE_TIME - remainingUseTicks;
-		// 防双执行:炸膛后返回
+
+		// 机枪模式先于普通蓄能判断处理，避免把开火阶段误当成普通大狗炮发射。
+		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			MachineGunState state = SERVER_MACHINE_GUN_STATES.get(player.getUuid());
+			if (state != null
+					&& (state.phase() == MachineGunPhase.AWAITING_RELEASE_TO_FIRE
+					|| state.phase() == MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED)) {
+				return;
+			}
+			SERVER_MACHINE_GUN_STATES.remove(player.getUuid());
+			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
+			return;
+		}
+
+		// 以下为普通“蓄能”附魔原逻辑。
 		if (elapsed >= OVERCHARGE_TICKS) {
 			return;
 		}
-		// 蓄能不足:不发射
 		if (elapsed < MIN_CHARGE_TICKS) {
 			sendActionBar(player, "action.big_dog_bark.charge_too_low");
 			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
 			return;
 		}
-		// 机枪模式:松开即停,清除子弹计数,短冷却再蓄能
-		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
-			MACHINE_GUN_FIRE_COUNT.remove(player.getUuid());
-			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
+		launchBigDog((ServerWorld) world, player, stack, elapsed);
+	}
+
+	// ==================== 机枪两阶段状态机 ====================
+
+	private TypedActionResult<ItemStack> useMachineGun(World world, PlayerEntity user, Hand hand, ItemStack stack) {
+		Map<UUID, MachineGunState> states = machineGunStates(world);
+		MachineGunState state = states.get(user.getUuid());
+		if (state != null && state.hand() != hand) {
+			states.remove(user.getUuid());
+			state = null;
+		}
+
+		if (state != null) {
+			switch (state.phase()) {
+				case AWAITING_RELEASE_TO_FIRE, AWAITING_RELEASE_AFTER_DEPLETED -> {
+					// 原版会在右键持续按住时每 4 Tick 自动重试；真实松开前只消费重试。
+					return TypedActionResult.consume(stack);
+				}
+				case READY_TO_FIRE -> {
+					if (!canStartCharging(world, user, stack)) {
+						return TypedActionResult.pass(stack);
+					}
+					states.put(user.getUuid(), new MachineGunState(hand, MachineGunPhase.FIRING));
+					user.setCurrentHand(hand);
+					if (!world.isClient) {
+						// 第二次按下立即发射第 1 发，之后 usageTick 每 4 Tick 继续发射。
+						fireMachineGunBullet((ServerWorld) world, (ServerPlayerEntity) user, stack);
+					}
+					return TypedActionResult.consume(stack);
+				}
+				case CHARGING, FIRING -> {
+					return TypedActionResult.consume(stack);
+				}
+			}
+		}
+
+		if (!canStartCharging(world, user, stack)) {
+			return TypedActionResult.pass(stack);
+		}
+		states.put(user.getUuid(), new MachineGunState(hand, MachineGunPhase.CHARGING));
+		user.setCurrentHand(hand);
+		if (!world.isClient) {
+			world.playSoundFromEntity(null, user, BigDogBarkSoundEvents.DOG_CHARGE,
+					SoundCategory.PLAYERS, 1.0F, 1.0F);
+		}
+		return TypedActionResult.consume(stack);
+	}
+
+	private static Map<UUID, MachineGunState> machineGunStates(World world) {
+		return world.isClient ? CLIENT_MACHINE_GUN_STATES : SERVER_MACHINE_GUN_STATES;
+	}
+
+	private static void clearMachineGunState(World world, PlayerEntity player) {
+		machineGunStates(world).remove(player.getUuid());
+	}
+
+	/** 客户端 Tick 使用:满蓄能/能量耗尽自动停止后，必须等物理右键真正松开。 */
+	public static boolean isClientMachineGunAwaitingRelease(PlayerEntity player) {
+		MachineGunState state = CLIENT_MACHINE_GUN_STATES.get(player.getUuid());
+		return state != null && (state.phase() == MachineGunPhase.AWAITING_RELEASE_TO_FIRE
+				|| state.phase() == MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED);
+	}
+
+	/** 客户端检测到物理右键松开；返回 true 表示应发送一次 C2S 释放握手。 */
+	public static boolean handleClientMachineGunUseKeyReleased(PlayerEntity player) {
+		UUID uuid = player.getUuid();
+		MachineGunState state = CLIENT_MACHINE_GUN_STATES.get(uuid);
+		if (state == null) {
+			return false;
+		}
+		if (state.phase() == MachineGunPhase.AWAITING_RELEASE_TO_FIRE) {
+			if (isValidMachineGunStack(player, player.getStackInHand(state.hand()), false)) {
+				CLIENT_MACHINE_GUN_STATES.put(uuid,
+						new MachineGunState(state.hand(), MachineGunPhase.READY_TO_FIRE));
+			} else {
+				CLIENT_MACHINE_GUN_STATES.remove(uuid);
+			}
+			return true;
+		}
+		if (state.phase() == MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED) {
+			CLIENT_MACHINE_GUN_STATES.remove(uuid);
+			return true;
+		}
+		return false;
+	}
+
+	/** 服务端收到释放握手；伪造/重复数据包在没有对应等待状态时不会产生任何效果。 */
+	public static void handleServerMachineGunUseKeyReleased(ServerPlayerEntity player) {
+		UUID uuid = player.getUuid();
+		MachineGunState state = SERVER_MACHINE_GUN_STATES.get(uuid);
+		if (state == null) {
 			return;
 		}
-		// 蓄能模式:正常发射单发声波
-		launchBigDog((ServerWorld) world, player, stack, elapsed);
+		if (state.phase() == MachineGunPhase.AWAITING_RELEASE_TO_FIRE) {
+			if (isValidMachineGunStack(player, player.getStackInHand(state.hand()), true)) {
+				SERVER_MACHINE_GUN_STATES.put(uuid,
+						new MachineGunState(state.hand(), MachineGunPhase.READY_TO_FIRE));
+			} else {
+				SERVER_MACHINE_GUN_STATES.remove(uuid);
+			}
+		} else if (state.phase() == MachineGunPhase.AWAITING_RELEASE_AFTER_DEPLETED) {
+			SERVER_MACHINE_GUN_STATES.remove(uuid);
+		}
+	}
+
+	private static boolean isValidMachineGunStack(PlayerEntity player, ItemStack stack, boolean serverSide) {
+		if (!stack.isOf(BigDogBarkItems.CARRIED_BIG_DOG) || !CarriedBigDogData.hasValidData(stack)) {
+			return false;
+		}
+		Optional<UUID> ownerUuid = CarriedBigDogData.getOwnerUuid(stack);
+		if (ownerUuid.isEmpty() || !ownerUuid.get().equals(player.getUuid())) {
+			return false;
+		}
+		return serverSide
+				? BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())
+				: BigDogEnchantmentUtil.hasMachineGunInComponents(stack);
+	}
+
+	/** HUD 使用:开火阶段的能量条应从满值向 0 递减。 */
+	public static boolean isClientMachineGunFiring(PlayerEntity player) {
+		MachineGunState state = CLIENT_MACHINE_GUN_STATES.get(player.getUuid());
+		return state != null && state.phase() == MachineGunPhase.FIRING;
+	}
+
+	public static void clearClientMachineGunState(PlayerEntity player) {
+		CLIENT_MACHINE_GUN_STATES.remove(player.getUuid());
+	}
+
+	public static void clearServerMachineGunState(ServerPlayerEntity player) {
+		SERVER_MACHINE_GUN_STATES.remove(player.getUuid());
 	}
 
 	/** 服务端放下流程:验证 → 创建狼 → 恢复数据 → 安全状态 → 空间检查 → 生成 → 消耗物品。 */
@@ -427,7 +634,7 @@ public class CarriedBigDogItem extends Item {
 		player.getItemCooldownManager().set(stack.getItem(), MISFIRE_COOLDOWN_TICKS);
 	}
 
-	/** 发射一发机枪小冲击波:短射程、不破坏方块、速度快、低伤害。 */
+	/** 发射一发机枪小冲击波:短射程、不破坏方块、速度快、固定伤害(6 点/3 颗心)。 */
 	private void fireMachineGunBullet(ServerWorld world, ServerPlayerEntity player, ItemStack stack) {
 		LaunchedBigDogEntity bullet = BigDogBarkEntityTypes.LAUNCHED_BIG_DOG.create(world);
 		if (bullet == null) {
@@ -437,11 +644,15 @@ public class CarriedBigDogItem extends Item {
 		Vec3d look = player.getRotationVec(1.0F);
 		bullet.setPosition(eye.x + look.x, eye.y - 0.1D + look.y, eye.z + look.z);
 		bullet.setOwner(player);
-		bullet.setChargePower(MIN_CHARGE_TICKS);
-		bullet.setMachineGunBulletParams(); // 短射程 + 不破坏方块
+		// 机枪子弹使用固定蓄能 Tick = READY_CHARGE_TICKS (40) 保证最低 6 点伤害
+		bullet.setChargePower(READY_CHARGE_TICKS);
+		bullet.setMachineGunBulletParams();
 		bullet.setVelocity(look.x * MACHINE_GUN_BULLET_SPEED, look.y * MACHINE_GUN_BULLET_SPEED,
 				look.z * MACHINE_GUN_BULLET_SPEED);
-		world.spawnEntity(bullet);
+		if (!world.spawnEntity(bullet)) {
+			sendActionBar(player, "action.big_dog_bark.launch_failed");
+			return;
+		}
 		world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_MACHINE_GUN,
 				SoundCategory.PLAYERS, 1.0F, 1.0F);
 	}

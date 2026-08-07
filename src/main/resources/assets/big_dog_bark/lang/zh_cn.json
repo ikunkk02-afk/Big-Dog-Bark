@@ -45,8 +45,9 @@
   "action.big_dog_bark.charge_misfire": "蓄能过载!大狗炸膛强行发射了!",
   "action.big_dog_bark.charge_invalid_dog": "大狗数据无效,无法蓄能",
   "action.big_dog_bark.launch_failed": "发射失败,大狗没有飞出去",
-  "action.big_dog_bark.machine_gun_ready": "机枪就绪",
-  "item.big_dog_bark.carried_big_dog.machine_gun_help": "按住右键蓄能后机枪扫射",
+  "action.big_dog_bark.machine_gun_ready": "机枪蓄能已满,松开右键后再次按住开火",
+  "action.big_dog_bark.machine_gun_depleted": "机枪能量耗尽,松开右键后重新蓄能",
+  "item.big_dog_bark.carried_big_dog.machine_gun_help": "按住右键蓄能;松开后再次按住右键开火,能量耗尽停止",
   "enchantment.big_dog_bark.machine_gun": "机枪",
   "subtitles.big_dog_bark.dog_machine_gun": "大狗:机枪发射"
 }
