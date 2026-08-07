@@ -214,8 +214,9 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 			LivingEntity living = (LivingEntity) entity;
 			Vec3d rel = living.getPos().subtract(this.origin);
 			double t = rel.dotProduct(unitDir);
-			if (t < 0.0D || t > distance + 2.0D) {
-				continue; // 在发射点后面或超出波前
+			// origin 在玩家眼前 1 格,近身目标可能位于 origin 后方;允许 -2 格后向容差。
+			if (t < -2.0D || t > distance + 2.0D) {
+				continue; // 在有效锥体外
 			}
 			double dSq = Math.max(rel.lengthSquared() - t * t, 0.0D);
 			double d = Math.sqrt(dSq);
