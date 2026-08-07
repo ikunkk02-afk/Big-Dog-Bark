@@ -34,6 +34,9 @@ public final class BigDogBarkSoundEvents {
 	/** 蓄能发射音效(松开右键发射大狗时播放)。 */
 	public static final SoundEvent DOG_LAUNCH = register("dog_launch");
 
+	/** 机枪发射音效(每发小冲击波射出时播放)。 */
+	public static final SoundEvent DOG_MACHINE_GUN = register("dog_machine_gun");
+
 	private BigDogBarkSoundEvents() {
 	}
 

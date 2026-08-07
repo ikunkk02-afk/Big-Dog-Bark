@@ -69,9 +69,10 @@ public final class CarriedBigDogData {
 		if (wolf.hasCustomName()) {
 			stack.set(DataComponentTypes.CUSTOM_NAME, wolf.getCustomName());
 		}
-		// 武器模式恢复:蓄能大狗(WeaponMode = CHARGE)重新抱起时通过真实附魔 API
-		// 重新添加“蓄能 I”,保证 放下 → 再抱起 不丢失附魔(实体状态没有旧物品栈可复制)
-		if (BigDogWolfUtil.getWeaponMode(wolf) == BigDogWeaponMode.CHARGE) {
+		// 武器模式恢复:蓄能大狗 / 机机大狗重新抱起时通过真实附魔 API 重新添加附魔
+		if (BigDogWolfUtil.getWeaponMode(wolf) == BigDogWeaponMode.MACHINE_GUN) {
+			BigDogEnchantmentUtil.applyMachineGun(stack, wolf.getRegistryManager());
+		} else if (BigDogWolfUtil.getWeaponMode(wolf) == BigDogWeaponMode.CHARGE) {
 			BigDogEnchantmentUtil.applyCharge(stack, wolf.getRegistryManager());
 		}
 		return stack;

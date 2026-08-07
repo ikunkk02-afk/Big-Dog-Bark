@@ -118,6 +118,16 @@
   - `assets/big_dog_bark/sounds/entity/dog_launch.ogg`(松开发射)
 - **当前没有机枪**;下一阶段将加入机枪附魔、子弹与连射。
 
+### 第六阶段:机枪扫射
+
+- 数据驱动附魔 **机枪 (Machine Gun)**:`big_dog_bark:machine_gun`,最高 1 级,只能应用到抱起的大狗;
+  与蓄能附魔互斥(同时有时机枪优先)。铁砧用法:`/give @s minecraft:enchanted_book[enchantments={levels:{"big_dog_bark:machine_gun":1}}]`。
+- **按住右键蓄能 → 自动连射**:蓄能做到 40 Tick(2 秒)后自动进入机枪扫射模式,每 4 Tick(0.2 秒)射出一发小冲击波;松开立即停止;蓄能不足 40 Tick 松开不发射。**不炸膛、不消耗大狗**。
+- 机枪小冲击波:射程 20 Tick(约 1 秒,40 格,由于速度 2×),**不破坏方块**;固定最低伤害(6 点),锥体 18° 扩散对沿途生物造成音波伤害;连射速度 5 发/秒(20 TPS 下 4 tick 间隔),持续按住就是机枪扫射。
+- 音效:`assets/big_dog_bark/sounds/entity/dog_machine_gun.ogg`(每发小冲击波播放)。
+- 蓄能进度条:机枪模式下 40 Tick 即满(绿色,无过载区),松开或冷却期间隐藏。
+- `BigDogBark.WeaponMode` 新增 2 = 机枪,放下→再抱起自动恢复“机枪”附魔。
+
 ## 构建与运行
 
 ```bat

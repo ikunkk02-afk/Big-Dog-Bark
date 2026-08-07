@@ -49,4 +49,30 @@ public final class BigDogEnchantmentUtil {
 				.getOptional(BigDogBarkEnchantments.CHARGE)
 				.ifPresent(entry -> stack.addEnchantment(entry, 1));
 	}
+
+	/** 机枪附魔等级(0 = 没有)。 */
+	public static int getMachineGunLevel(ItemStack stack, RegistryWrapper.WrapperLookup registryManager) {
+		return chargeRegistry(registryManager)
+				.getOptional(BigDogBarkEnchantments.MACHINE_GUN)
+				.map(entry -> EnchantmentHelper.getLevel(entry, stack))
+				.orElse(0);
+	}
+
+	/** 是否拥有“机枪”附魔(需要动态注册表,服务端权威路径使用)。 */
+	public static boolean hasMachineGun(ItemStack stack, RegistryWrapper.WrapperLookup registryManager) {
+		return getMachineGunLevel(stack, registryManager) >= 1;
+	}
+
+	/** 是否拥有“机枪”附魔(无需注册表的组件直查,仅用于 Tooltip 等展示场景)。 */
+	public static boolean hasMachineGunInComponents(ItemStack stack) {
+		return stack.getEnchantments().getEnchantments().stream()
+				.anyMatch(entry -> entry.matchesKey(BigDogBarkEnchantments.MACHINE_GUN));
+	}
+
+	/** 给物品应用 1 级“机枪”附魔。 */
+	public static void applyMachineGun(ItemStack stack, RegistryWrapper.WrapperLookup registryManager) {
+		chargeRegistry(registryManager)
+				.getOptional(BigDogBarkEnchantments.MACHINE_GUN)
+				.ifPresent(entry -> stack.addEnchantment(entry, 1));
+	}
 }

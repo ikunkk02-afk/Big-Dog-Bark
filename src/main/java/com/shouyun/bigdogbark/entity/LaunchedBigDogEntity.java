@@ -54,6 +54,12 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	/** 发射时的蓄能 Tick 数(16～89),唯一事实来源,伤害/击退由此重算。 */
 	private int chargePower;
 
+	/** 最大飞行寿命(Tick);默认 {@link #MAX_LIFE_TICKS},机枪小冲击波可覆盖。 */
+	private int customMaxLife = MAX_LIFE_TICKS;
+
+	/** 是否摧毁路径方块;默认 true,机枪小冲击波设为 false。 */
+	private boolean destroysBlocks = true;
+
 	/** 发射起点(扇形扩散的顶点,首次 tick 记录;存档加载后从当前位置重新扩散)。 */
 	private Vec3d origin;
 
@@ -73,6 +79,12 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	public void setChargePower(int chargeTicks) {
 		this.chargePower = MathHelper.clamp(chargeTicks, CarriedBigDogItem.MIN_CHARGE_TICKS,
 				CarriedBigDogItem.OVERCHARGE_TICKS - 1);
+	}
+
+	/** 将本投射物配置为机枪小冲击波(射程 20 tick,不破坏方块)。 */
+	public void setMachineGunBulletParams() {
+		this.customMaxLife = 20;
+		this.destroysBlocks = false;
 	}
 
 	public int getChargePower() {
@@ -110,17 +122,19 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 			return;
 		}
 		ServerWorld serverWorld = (ServerWorld) world;
-		// 射程耗尽:声波消失(大狗一直在玩家手中,无需掉落/回收)
-		if (this.age >= MAX_LIFE_TICKS) {
+		// 射程耗尽:声波消失
+		if (this.age >= this.customMaxLife) {
 			this.discard();
 			return;
 		}
-		// 首次 tick 记录发射起点(扇形扩散的顶点)
+		// 首次 tick 记录发射起点(圆锥扩散的顶点)
 		if (this.origin == null) {
 			this.origin = this.getPos();
 		}
-		// 1. 圆锥形摧毁路径方块(见 destroyBlocksInFan)
-		this.destroyBlocksInFan((ServerWorld) world, velocity);
+		// 1. 圆锥形摧毁路径方块(机枪小冲击波跳过此步)
+		if (this.destroysBlocks) {
+			this.destroyBlocksInFan(serverWorld, velocity);
+		}
 		// 2. 圆锥形伤害生物:锥体内所有生物各结算一次(3D 判定,与方块破坏同一锥体)
 		this.damageEntitiesInCone((ServerWorld) world, velocity);
 		// 3. 波前粒子:原版声波扩散环,连续生成形成移动的波环/激光通道

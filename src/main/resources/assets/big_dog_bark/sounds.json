@@ -61,5 +61,14 @@
         "stream": false
       }
     ]
+  },
+  "dog_machine_gun": {
+    "subtitle": "subtitles.big_dog_bark.dog_machine_gun",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_machine_gun",
+        "stream": false
+      }
+    ]
   }
 }

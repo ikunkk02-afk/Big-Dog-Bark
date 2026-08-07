@@ -22,6 +22,10 @@ public final class BigDogBarkEnchantments {
 	public static final RegistryKey<Enchantment> CHARGE =
 			RegistryKey.of(RegistryKeys.ENCHANTMENT, BigDogBark.id("charge"));
 
+	/** 机枪:只能应用到抱起的大狗,用于第六阶段“机枪扫射”。 */
+	public static final RegistryKey<Enchantment> MACHINE_GUN =
+			RegistryKey.of(RegistryKeys.ENCHANTMENT, BigDogBark.id("machine_gun"));
+
 	private BigDogBarkEnchantments() {
 	}
 }

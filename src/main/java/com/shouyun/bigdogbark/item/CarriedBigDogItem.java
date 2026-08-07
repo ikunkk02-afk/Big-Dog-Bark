@@ -84,14 +84,20 @@ public class CarriedBigDogItem extends Item {
 	/** 发射后冷却 Tick(1 秒,限制射速;大狗不消耗,可反复蓄能发射)。 */
 	public static final int LAUNCH_COOLDOWN_TICKS = 20;
 
+	/** 机枪连射间隔(Tick):蓄能达到 40 Tick 后每 4 Tick 自动射一发。 */
+	public static final int MACHINE_GUN_FIRE_INTERVAL = 4;
+
 	/** 炸膛爆炸威力(视觉约 2～3 级,不破坏地形)。 */
 	private static final float MISFIRE_EXPLOSION_POWER = 3.0F;
 
-	/** 炸膛对玩家的固定伤害(约 3.5 颗心,不会一炸即死)。 */
+		// 炸膛对玩家的固定伤害(约 3.5 颗心,不会一炸即死)。
 	private static final float MISFIRE_PLAYER_DAMAGE = 7.0F;
 
 	/** 炸膛对玩家的击退力度。 */
 	private static final double MISFIRE_KNOCKBACK = 1.8D;
+
+	/** 机枪子弹速度(格/tick):比蓄能声波更快,手感更像子弹。 */
+	private static final double MACHINE_GUN_BULLET_SPEED = 2.0D;
 
 	public CarriedBigDogItem(Settings settings) {
 		super(settings);
@@ -169,20 +175,29 @@ public class CarriedBigDogItem extends Item {
 			return;
 		}
 		int elapsed = MAX_USE_TIME - remainingUseTicks;
-		// 40 Tick:蓄能完成(阈值点触发,一次蓄力只播放一次)
+		// 机枪模式:蓄能 40 Tick 后进入连射,不炸膛
+		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			if (elapsed == READY_CHARGE_TICKS) {
+				world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
+						SoundCategory.PLAYERS, 1.0F, 1.0F);
+				sendActionBar(player, "action.big_dog_bark.machine_gun_ready");
+			}
+			if (elapsed >= READY_CHARGE_TICKS && (elapsed - READY_CHARGE_TICKS) % MACHINE_GUN_FIRE_INTERVAL == 0) {
+				fireMachineGunBullet((ServerWorld) world, player, stack);
+			}
+			return; // 机枪模式不触发蓄能/炸膛逻辑
+		}
+		// 蓄能模式:40 Tick 提示,70 Tick 警告,90 Tick 炸膛
 		if (elapsed == READY_CHARGE_TICKS) {
-			// playSoundFromEntity:音效跟随玩家实体移动
 			world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
 					SoundCategory.PLAYERS, 1.0F, 1.0F);
 			sendActionBar(player, "action.big_dog_bark.charge_ready");
 		} else if (elapsed == DANGER_CHARGE_TICKS) {
-			// 70 Tick:危险警告(一次蓄力只出现一次)+ 少量明显警告粒子
 			sendActionBar(player, "action.big_dog_bark.charge_danger");
 			((ServerWorld) world).spawnParticles(ParticleTypes.EXPLOSION,
 					player.getX(), player.getY() + 1.0D, player.getZ(),
 					6, 0.5D, 0.5D, 0.5D, 0.02D);
 		} else if (elapsed >= OVERCHARGE_TICKS) {
-			// 90 Tick:自动炸膛,不等玩家松开右键
 			misfire((ServerWorld) world, player, stack);
 		}
 	}
@@ -192,20 +207,27 @@ public class CarriedBigDogItem extends Item {
 		if (world.isClient || !(user instanceof ServerPlayerEntity player)) {
 			return;
 		}
-		// 玩家死亡/已移除时不发射(防止死亡瞬间清空大狗)
+		// 玩家死亡/已移除时不发射
 		if (player.isRemoved() || !player.isAlive()) {
 			return;
 		}
 		int elapsed = MAX_USE_TIME - remainingUseTicks;
-		// 防双执行:炸膛触发 stopUsingItem 后仍会调用本方法,过载区间直接返回,禁止再发射
+		// 防双执行:炸膛后返回
 		if (elapsed >= OVERCHARGE_TICKS) {
 			return;
 		}
-		// 蓄能不足:不发射、不消耗、不生成投射物,大狗继续留在手中
+		// 蓄能不足:不发射
 		if (elapsed < MIN_CHARGE_TICKS) {
 			sendActionBar(player, "action.big_dog_bark.charge_too_low");
+			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
 			return;
 		}
+		// 机枪模式:松开即停(子弹已在 usageTick 中连射),不发射单发
+		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
+			return;
+		}
+		// 蓄能模式:正常发射单发声波
 		launchBigDog((ServerWorld) world, player, stack, elapsed);
 	}
 
@@ -241,9 +263,14 @@ public class CarriedBigDogItem extends Item {
 			sendActionBar(player, "action.big_dog_bark.carried_dog_invalid_data");
 			return ActionResult.SUCCESS;
 		}
-		// 5.5 武器模式:物品当前带“蓄能 I” → CHARGE,否则 NONE(放下→再抱起时据此恢复附魔)
-		BigDogWolfUtil.setWeaponMode(wolf, BigDogEnchantmentUtil.hasCharge(stack, player.getRegistryManager())
-				? BigDogWeaponMode.CHARGE : BigDogWeaponMode.NONE);
+		// 5.5 武器模式:物品当前带“蓄能 I” → CHARGE;带“机枪” → MACHINE_GUN;否则 NONE
+		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			BigDogWolfUtil.setWeaponMode(wolf, BigDogWeaponMode.MACHINE_GUN);
+		} else if (BigDogEnchantmentUtil.hasCharge(stack, player.getRegistryManager())) {
+			BigDogWolfUtil.setWeaponMode(wolf, BigDogWeaponMode.CHARGE);
+		} else {
+			BigDogWolfUtil.setWeaponMode(wolf, BigDogWeaponMode.NONE);
+		}
 		// 6. 强制安全状态(不能完全信任物品中的主人字段,已通过 OwnerUuid 验证当前玩家)
 		wolf.setTamed(true, false);
 		wolf.setOwner(player);
@@ -284,7 +311,7 @@ public class CarriedBigDogItem extends Item {
 		return ActionResult.SUCCESS;
 	}
 
-	/** 是否满足启动蓄力条件:带蓄能附魔 + 有效大狗 + 主人 + 非观战 + 不在冷却。 */
+	/** 是否满足启动蓄力条件:带蓄能或机枪附魔 + 有效大狗 + 主人 + 非观战 + 不在冷却。 */
 	private boolean canStartCharging(World world, PlayerEntity player, ItemStack stack) {
 		if (player.isSpectator() || player.getItemCooldownManager().isCoolingDown(stack.getItem())) {
 			return false;
@@ -299,7 +326,8 @@ public class CarriedBigDogItem extends Item {
 		if (ownerUuid.isEmpty() || !ownerUuid.get().equals(player.getUuid())) {
 			return false;
 		}
-		return BigDogEnchantmentUtil.getChargeLevel(stack, player.getRegistryManager()) >= 1;
+		return BigDogEnchantmentUtil.getChargeLevel(stack, player.getRegistryManager()) >= 1
+				|| BigDogEnchantmentUtil.getMachineGunLevel(stack, player.getRegistryManager()) >= 1;
 	}
 
 	/**
@@ -386,6 +414,25 @@ public class CarriedBigDogItem extends Item {
 		player.getItemCooldownManager().set(stack.getItem(), MISFIRE_COOLDOWN_TICKS);
 	}
 
+	/** 发射一发机枪小冲击波:短射程、不破坏方块、速度快、低伤害。 */
+	private void fireMachineGunBullet(ServerWorld world, ServerPlayerEntity player, ItemStack stack) {
+		LaunchedBigDogEntity bullet = BigDogBarkEntityTypes.LAUNCHED_BIG_DOG.create(world);
+		if (bullet == null) {
+			return;
+		}
+		Vec3d eye = player.getEyePos();
+		Vec3d look = player.getRotationVec(1.0F);
+		bullet.setPosition(eye.x + look.x, eye.y - 0.1D + look.y, eye.z + look.z);
+		bullet.setOwner(player);
+		bullet.setChargePower(MIN_CHARGE_TICKS);
+		bullet.setMachineGunBulletParams(); // 短射程 + 不破坏方块
+		bullet.setVelocity(look.x * MACHINE_GUN_BULLET_SPEED, look.y * MACHINE_GUN_BULLET_SPEED,
+				look.z * MACHINE_GUN_BULLET_SPEED);
+		world.spawnEntity(bullet);
+		world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_MACHINE_GUN,
+				SoundCategory.PLAYERS, 1.0F, 1.0F);
+	}
+
 	@Override
 	public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
 		if (!CarriedBigDogData.hasValidData(stack)) {
@@ -405,11 +452,16 @@ public class CarriedBigDogItem extends Item {
 		float maxHealth = CarriedBigDogData.getSavedMaxHealth(stack);
 		tooltip.add(Text.translatable("item.big_dog_bark.carried_big_dog.health",
 				(int) health, (int) maxHealth).formatted(Formatting.GRAY));
-		// 只有真正带“蓄能”附魔的大狗才显示武器说明
+		// 只有真正带“蓄能”附魔的大狗才显示蓄能武器说明
 		if (BigDogEnchantmentUtil.hasChargeInComponents(stack)) {
 			tooltip.add(Text.translatable("item.big_dog_bark.carried_big_dog.charge_help1")
 					.formatted(Formatting.DARK_GRAY));
 			tooltip.add(Text.translatable("item.big_dog_bark.carried_big_dog.charge_help2")
+					.formatted(Formatting.DARK_GRAY));
+		}
+		// 带“机枪”附魔的大狗显示机枪说明
+		if (BigDogEnchantmentUtil.hasMachineGunInComponents(stack)) {
+			tooltip.add(Text.translatable("item.big_dog_bark.carried_big_dog.machine_gun_help")
 					.formatted(Formatting.DARK_GRAY));
 		}
 		tooltip.add(Text.translatable("item.big_dog_bark.carried_big_dog.place").formatted(Formatting.DARK_GRAY));

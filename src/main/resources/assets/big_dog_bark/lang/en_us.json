@@ -44,5 +44,9 @@
   "action.big_dog_bark.charge_danger": "Warning: charge overload imminent!",
   "action.big_dog_bark.charge_misfire": "Charge overloaded - the big dog misfired and launched!",
   "action.big_dog_bark.charge_invalid_dog": "Invalid big dog data - cannot charge",
-  "action.big_dog_bark.launch_failed": "Launch failed - the big dog did not fly"
+  "action.big_dog_bark.launch_failed": "Launch failed - the big dog did not fly",
+  "action.big_dog_bark.machine_gun_ready": "Machine gun ready",
+  "item.big_dog_bark.carried_big_dog.machine_gun_help": "Hold right-click and hold: fires small sonic bursts after charge-up",
+  "enchantment.big_dog_bark.machine_gun": "Machine Gun",
+  "subtitles.big_dog_bark.dog_machine_gun": "Big dog fires"
 }

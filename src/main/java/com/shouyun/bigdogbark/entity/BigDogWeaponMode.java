@@ -21,8 +21,11 @@ public final class BigDogWeaponMode {
 	/** 蓄能模式(carried_big_dog 带“蓄能 I”附魔)。 */
 	public static final int CHARGE = 1;
 
+	/** 机枪模式(carried_big_dog 带“机枪”附魔)。 */
+	public static final int MACHINE_GUN = 2;
+
 	/** 当前允许的最大值,读取非法 NBT 值时用于 clamp。 */
-	public static final int MAX_VALUE = CHARGE;
+	public static final int MAX_VALUE = MACHINE_GUN;
 
 	private BigDogWeaponMode() {
 	}

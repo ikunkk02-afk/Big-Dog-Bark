@@ -1,0 +1,22 @@
+{
+  "anvil_cost": 4,
+  "description": {
+    "translate": "enchantment.big_dog_bark.machine_gun"
+  },
+  "effects": {},
+  "max_cost": {
+    "base": 12,
+    "per_level_above_first": 8
+  },
+  "max_level": 1,
+  "min_cost": {
+    "base": 5,
+    "per_level_above_first": 8
+  },
+  "slots": [
+    "mainhand",
+    "offhand"
+  ],
+  "supported_items": "#big_dog_bark:enchantable/carried_big_dog",
+  "weight": 5
+}
