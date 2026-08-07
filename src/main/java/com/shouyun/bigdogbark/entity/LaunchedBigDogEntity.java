@@ -42,17 +42,14 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	/** 可被声波摧毁的方块爆炸抗性上限(石头 6 / 木头 2 / 玻璃 0.3;黑曜石 1200、基岩保留)。 */
 	private static final double DESTROY_BLAST_RESISTANCE_LIMIT = 1000.0D;
 
-	/** 扇形扩散半角(水平,度):波前每前进 1 格水平破坏半径扩大 tan(30°) ≈ 0.58 格。 */
-	private static final double SPREAD_HALF_ANGLE_DEG = 30.0D;
+	/** 锥形扩散半角(度):绕飞行方向轴的三维锥体,水平/垂直/斜向均等扩散。 */
+	private static final double SPREAD_HALF_ANGLE_DEG = 18.0D;
 
-	/** 波前垂直破坏半高(格):破坏面上下各 2.5 格(共约 5 格高,俯视为扇形)。 */
-	private static final double VERTICAL_HALF_HEIGHT = 2.5D;
+	/** 锥底基础半径(格):确保近距离也能破坏,连 tick 重叠无间隙。 */
+	private static final double BASE_RADIUS = 2.0D;
 
-	/** 波前薄层厚度(格):每 tick 只破坏新增的一段,累积成完整扇形路径。 */
-	private static final double LAYER_THICKNESS = 1.5D;
-
-	/** 波前伤害判定范围扩充(方块)。 */
-	private static final double HIT_BOX_EXPAND = 0.25D;
+	/** 波前薄层厚度(格):每 tick 只处理投影距离在此范围的方块,累积成完整锥形。 */
+	private static final double LAYER_THICKNESS = 2.0D;
 
 	/** 发射时的蓄能 Tick 数(16～89),唯一事实来源,伤害/击退由此重算。 */
 	private int chargePower;
@@ -122,23 +119,10 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 		if (this.origin == null) {
 			this.origin = this.getPos();
 		}
-		// 1. 扇形摧毁路径方块:以发射点为顶点、沿飞行方向扩散的扇形波前,
-		//    每 tick 只破坏新增薄层,累积起来整条声波路径都被破坏
+		// 1. 圆锥形摧毁路径方块(见 destroyBlocksInFan)
 		this.destroyBlocksInFan((ServerWorld) world, velocity);
-		// 2. 伤害波前生物(服务端权威;每个实体只结算一次;不伤害发射者本人)
-		Box box = this.getBoundingBox().expand(HIT_BOX_EXPAND);
-		for (Entity entity : world.getOtherEntities(this, box, e -> e instanceof LivingEntity)) {
-			if (entity == this.getOwner() || !this.damagedEntities.add(entity.getUuid())) {
-				continue;
-			}
-			LivingEntity living = (LivingEntity) entity;
-			if (living.damage(this.getDamageSources().sonicBoom(this), this.getLaunchDamage())) {
-				Vec3d dir = velocity.normalize();
-				float knockback = this.getLaunchKnockback();
-				living.addVelocity(dir.x * knockback, 0.3D * knockback + 0.2D, dir.z * knockback);
-				living.velocityModified = true;
-			}
-		}
+		// 2. 圆锥形伤害生物:锥体内所有生物各结算一次(3D 判定,与方块破坏同一锥体)
+		this.damageEntitiesInCone((ServerWorld) world, velocity);
 		// 3. 波前粒子:原版声波扩散环,连续生成形成移动的波环/激光通道
 		serverWorld.spawnParticles(ParticleTypes.SONIC_BOOM,
 				this.getX(), this.getY(), this.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
@@ -148,48 +132,84 @@ public class LaunchedBigDogEntity extends ProjectileEntity {
 	}
 
 	/**
-	 * 扇形摧毁波前附近的方块:
-	 * 以当前波前位置为中心、扩散半径为 R = 2.5 + 距离 × tan(30°) 的圆盘,
-	 * 仅破坏飞行方向正前方 30° 半角内的方块(俯视为扇形),垂高 5 格;
-	 * 每 tick 全量扫描圆盘,连 tick 的扫描重叠确保整个扇形路径无漏网之鱼。
+	 * 三维圆锥形摧毁:以发射起点为顶点、飞行方向为轴、半角 18° 的圆锥体,
+	 * 每 tick 处理波前前后 LAYER_THICKNESS 厚的锥段,累积覆盖整条路径。
 	 */
 	private void destroyBlocksInFan(ServerWorld world, Vec3d dir) {
 		Vec3d pos = this.getPos();
 		double distance = this.origin.distanceTo(pos);
-		double halfAngleCos = Math.cos(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
-		// 水平方向归一化(垂直发射时退化为整圆,扇角过滤不生效)
-		Vec3d dirHorizontal = new Vec3d(dir.x, 0.0D, dir.z);
-		double dirHorizontalLen = dirHorizontal.length();
-		if (dirHorizontalLen > 0.001D) {
-			dirHorizontal = dirHorizontal.multiply(1.0D / dirHorizontalLen);
-		}
-		// 波前圆盘半径:随距离线性增长,基础 2.5 确保近距离也能破坏,连 tick 重叠无间隙
-		double hRadius = 2.5D + distance * Math.tan(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
-		int ri = (int) Math.ceil(hRadius) + 1;
+		double tanHalfAngle = Math.tan(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
+		double coneRadius = BASE_RADIUS + distance * tanHalfAngle;
+		int r = (int) Math.ceil(coneRadius) + 1;
 		BlockPos center = BlockPos.ofFloored(pos);
-		for (int dx = -ri; dx <= ri; dx++) {
-			for (int dz = -ri; dz <= ri; dz++) {
-				// 方块中心相对波前中心的水平偏移
-				double ox = dx + 0.5D;
-				double oz = dz + 0.5D;
-				double hd = Math.sqrt(ox * ox + oz * oz);
-				if (hd > hRadius + 0.5D) {
-					continue;
-				}
-				// 扇形判定:水平偏移方向与飞行水平方向夹角 < 30°(垂直时无此限制)
-				if (dirHorizontalLen > 0.001D && hd > 0.001D
-						&& (ox * dirHorizontal.x + oz * dirHorizontal.z) / hd < halfAngleCos) {
-					continue;
-				}
-				for (int dy = (int) -Math.floor(VERTICAL_HALF_HEIGHT);
-						dy <= (int) Math.floor(VERTICAL_HALF_HEIGHT); dy++) {
+		for (int dx = -r; dx <= r; dx++) {
+			for (int dy = -r; dy <= r; dy++) {
+				for (int dz = -r; dz <= r; dz++) {
 					BlockPos bp = center.add(dx, dy, dz);
+					Vec3d rel = Vec3d.ofCenter(bp).subtract(this.origin);
+					double t = rel.dotProduct(dir); // 沿飞行方向的投影距离
+					if (t < 0.0D || t > distance + LAYER_THICKNESS) {
+						continue; // 在发射点后面或超出波前太远
+					}
+					// 到轴线的垂直距离
+					double dSq = rel.lengthSquared() - t * t;
+					if (dSq < 0.0D) dSq = 0.0D;
+					double d = Math.sqrt(dSq);
+					double radiusAtT = BASE_RADIUS + t * tanHalfAngle;
+					if (d > radiusAtT + 0.5D) {
+						continue; // 在锥体外
+					}
+					// 薄层:每 tick 只处理波前附近新增的方块
+					if (t < distance - LAYER_THICKNESS) {
+						continue;
+					}
 					BlockState state = world.getBlockState(bp);
 					if (!state.isAir() && state.getFluidState().isEmpty()
 							&& state.getBlock().getBlastResistance() < DESTROY_BLAST_RESISTANCE_LIMIT) {
 						world.breakBlock(bp, false, this, 0);
 					}
 				}
+			}
+		}
+	}
+
+	/**
+	 * 圆锥体内全体生物伤害:以发射点为顶点、飞行方向为轴的三维圆锥判定,
+	 * 锥体内的每个生物各结算一次(同一个生物在锥体中被扫描到多个 tick 也只伤一次)。
+	 * 不伤害发射者本人。
+	 */
+	private void damageEntitiesInCone(ServerWorld world, Vec3d dir) {
+		double distance = this.origin.distanceTo(this.getPos());
+		double tanHalfAngle = Math.tan(Math.toRadians(SPREAD_HALF_ANGLE_DEG));
+		double coneRadius = BASE_RADIUS + distance * tanHalfAngle;
+		// 锥体包围盒(扫描范围内的生物)
+		Box box = new Box(
+				this.origin.getX() - coneRadius, this.origin.getY() - coneRadius, this.origin.getZ() - coneRadius,
+				this.origin.getX() + coneRadius, this.origin.getY() + coneRadius, this.origin.getZ() + coneRadius)
+				.offset(dir.multiply(distance * 0.5)); // 盒体居中于锥体中间
+		for (Entity entity : world.getOtherEntities(this, box, e -> e instanceof LivingEntity)) {
+			if (entity == this.getOwner()) {
+				continue;
+			}
+			if (!this.damagedEntities.add(entity.getUuid())) {
+				continue; // 已结算过的生物不再重复伤害
+			}
+			LivingEntity living = (LivingEntity) entity;
+			Vec3d rel = living.getPos().subtract(this.origin);
+			double t = rel.dotProduct(dir);
+			if (t < 0.0D || t > distance + 2.0D) {
+				continue; // 在发射点后面或超出波前
+			}
+			double dSq = Math.max(rel.lengthSquared() - t * t, 0.0D);
+			double d = Math.sqrt(dSq);
+			double radiusAtT = BASE_RADIUS + t * tanHalfAngle;
+			if (d > radiusAtT + living.getWidth() * 0.5D) {
+				continue; // 生物中心到轴的距离大于锥体半径,在锥体外
+			}
+			if (living.damage(this.getDamageSources().sonicBoom(this), this.getLaunchDamage())) {
+				float knockback = this.getLaunchKnockback();
+				living.addVelocity(dir.x * knockback, 0.3D * knockback + 0.2D, dir.z * knockback);
+				living.velocityModified = true;
 			}
 		}
 	}
