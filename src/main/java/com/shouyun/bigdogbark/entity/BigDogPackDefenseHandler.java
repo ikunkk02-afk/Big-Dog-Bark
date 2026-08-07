@@ -3,6 +3,7 @@ package com.shouyun.bigdogbark.entity;
 import com.shouyun.bigdogbark.BigDogBark;
 import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -17,6 +18,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,11 +49,15 @@ public final class BigDogPackDefenseHandler {
 	/** 主人粒度的冷却计时器(服务端 game time)。 */
 	private static final Map<UUID, Long> COOLDOWNS = new HashMap<>();
 
+	/** 护卫狼 UUID → 召唤时的 game time,用于超时回收。 */
+	private static final Map<UUID, Long> GUARD_WOLF_SPAWN_TIMES = new HashMap<>();
+
 	private BigDogPackDefenseHandler() {
 	}
 
 	public static void register() {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BigDogPackDefenseHandler::onAfterDamage);
+		ServerTickEvents.END_SERVER_TICK.register(BigDogPackDefenseHandler::onEndServerTick);
 	}
 
 	private static void onAfterDamage(LivingEntity entity, DamageSource source, float baseDamage,
@@ -145,6 +151,7 @@ public final class BigDogPackDefenseHandler {
 			guard.getCommandTags().add(GUARD_NBT_KEY);
 
 			world.spawnEntity(guard);
+			GUARD_WOLF_SPAWN_TIMES.put(guard.getUuid(), gameTime);
 			// 简单粒子:护卫狼出现的位置冒一点烟
 			world.spawnParticles(ParticleTypes.POOF, x, y + 0.5D, z, 3, 0.3D, 0.3D, 0.3D, 0.02D);
 		}
@@ -157,11 +164,27 @@ public final class BigDogPackDefenseHandler {
 	}
 
 	/**
-	 * 每 tick 由外部(如 tick 事件)调用,清理超时护卫狼。
-	 * 当前版本不在 tick 中主动清理;护卫狼通过 {@code setAngerTime(1200)} 保持攻击性,
-	 * 并且由原版自然仇恨/超时机制处理。后续可在此扩展更精确的生命周期管理。
+	 * 每服务器 tick 清理超时护卫狼(20 tick 检查一次以降低开销)。
 	 */
-	public static void tick(ServerWorld world) {
-		// 预留扩展点
+	private static void onEndServerTick(net.minecraft.server.MinecraftServer server) {
+		if (GUARD_WOLF_SPAWN_TIMES.isEmpty() || server.getTicks() % 20 != 0) {
+			return;
+		}
+		long now = server.getOverworld().getTime();
+		Iterator<Map.Entry<UUID, Long>> it = GUARD_WOLF_SPAWN_TIMES.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<UUID, Long> entry = it.next();
+			if (now - entry.getValue() >= GUARD_WOLF_LIFETIME_TICKS) {
+				// 尝试在所有已加载世界中找到并移除该实体
+				for (ServerWorld world : server.getWorlds()) {
+					Entity e = world.getEntity(entry.getKey());
+					if (e != null) {
+						e.discard();
+						break;
+					}
+				}
+				it.remove();
+			}
+		}
 	}
 }
