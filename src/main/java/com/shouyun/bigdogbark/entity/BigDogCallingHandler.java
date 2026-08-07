@@ -1,9 +1,10 @@
 package com.shouyun.bigdogbark.entity;
 
-import com.shouyun.bigdogbark.mixin.JukeboxBlockEntityMixin;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.block.entity.JukeboxBlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ai.pathing.Path;
+import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.passive.ChickenEntity;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -11,7 +12,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 大狗召唤唱片吸引逻辑:当唱片机播放 big_dog_bark:big_dog_calling 时,
@@ -22,6 +25,9 @@ public final class BigDogCallingHandler {
 	private static final double ATTRACT_RADIUS = 32.0D;
 	private static final double ATTRACT_SPEED = 1.2D;
 
+	/** 全局活跃的大狗召唤唱片机位置集合(由 JukeboxBlockEntityMixin 维护)。 */
+	public static final Set<BlockPos> ACTIVE_JUKEBOXES = new HashSet<>();
+
 	private BigDogCallingHandler() {
 	}
 
@@ -30,7 +36,7 @@ public final class BigDogCallingHandler {
 	}
 
 	private static void onWorldTick(ServerWorld world) {
-		if (JukeboxBlockEntityMixin.ACTIVE_BIG_DOG_CALLING_JUKEBOXES.isEmpty()) {
+		if (ACTIVE_JUKEBOXES.isEmpty()) {
 			return;
 		}
 		// 每 40 tick(2 秒) 执行一次吸引,降低开销
@@ -39,7 +45,7 @@ public final class BigDogCallingHandler {
 		}
 
 		List<BlockPos> toRemove = new ArrayList<>();
-		for (BlockPos pos : JukeboxBlockEntityMixin.ACTIVE_BIG_DOG_CALLING_JUKEBOXES) {
+		for (BlockPos pos : ACTIVE_JUKEBOXES) {
 			if (!world.isChunkLoaded(pos)) {
 				continue;
 			}
@@ -65,7 +71,7 @@ public final class BigDogCallingHandler {
 			}
 		}
 		for (BlockPos pos : toRemove) {
-			JukeboxBlockEntityMixin.ACTIVE_BIG_DOG_CALLING_JUKEBOXES.remove(pos);
+			ACTIVE_JUKEBOXES.remove(pos);
 		}
 	}
 
