@@ -88,5 +88,14 @@
         "stream": false
       }
     ]
+  },
+  "dog_ambient": {
+    "subtitle": "subtitles.big_dog_bark.dog_ambient",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_ambient",
+        "stream": false
+      }
+    ]
   }
 }

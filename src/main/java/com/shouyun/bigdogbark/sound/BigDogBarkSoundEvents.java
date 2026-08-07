@@ -43,6 +43,9 @@ public final class BigDogBarkSoundEvents {
 	/** 特殊大狗驯服失败音效(附魔骨头驯服失败时播放)。 */
 	public static final SoundEvent DOG_TAME_FAILURE = register("dog_tame_failure");
 
+	/** 狼日常叫声(替换原版 ENTITY_WOLF_AMBIENT,所有狼生效)。 */
+	public static final SoundEvent DOG_AMBIENT = register("dog_ambient");
+
 	private BigDogBarkSoundEvents() {
 	}
 

@@ -51,5 +51,6 @@
   "enchantment.big_dog_bark.machine_gun": "Machine Gun",
   "subtitles.big_dog_bark.dog_machine_gun": "Big dog fires",
   "subtitles.big_dog_bark.dog_tame_success": "Big dog tamed",
-  "subtitles.big_dog_bark.dog_tame_failure": "Big dog resists taming"
+  "subtitles.big_dog_bark.dog_tame_failure": "Big dog resists taming",
+  "subtitles.big_dog_bark.dog_ambient": "Dog barks"
 }

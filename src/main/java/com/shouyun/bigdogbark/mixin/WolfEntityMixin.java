@@ -4,8 +4,10 @@ import com.shouyun.bigdogbark.entity.BigDogGrowth;
 import com.shouyun.bigdogbark.entity.BigDogWeaponMode;
 import com.shouyun.bigdogbark.entity.BigDogWolfAccess;
 import com.shouyun.bigdogbark.entity.BigDogWolfUtil;
+import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.math.MathHelper;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +15,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * 为原版狼注入“特殊大狗”布尔标记与成长进度,并随实体 NBT 持久化:
@@ -92,5 +95,13 @@ public abstract class WolfEntityMixin implements BigDogWolfAccess {
 		this.bigDogBark$weaponMode = MathHelper.clamp(nbt.getInt(WEAPON_NBT_KEY), 0, BigDogWeaponMode.MAX_VALUE);
 		// 加载完成后按成长进度重新应用缩放(幂等:先移除旧修饰符再添加)
 		BigDogWolfUtil.applyGrowthScale((WolfEntity) (Object) this);
+	}
+
+	/**
+	 * 替换原版狼的日常叫声(ambient),所有狼(含普通狼和特殊大狗)统一播放自定义叫声。
+	 */
+	@Inject(method = "getAmbientSound", at = @At("TAIL"), cancellable = true)
+	private void bigDogBark$replaceAmbientSound(CallbackInfoReturnable<SoundEvent> cir) {
+		cir.setReturnValue(BigDogBarkSoundEvents.DOG_AMBIENT);
 	}
 }
