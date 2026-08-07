@@ -49,5 +49,6 @@
   "action.big_dog_bark.machine_gun_depleted": "Machine gun energy depleted; release right-click to recharge",
   "item.big_dog_bark.carried_big_dog.machine_gun_help": "Hold right-click to charge; release, then hold it again to fire until energy is depleted",
   "enchantment.big_dog_bark.machine_gun": "Machine Gun",
-  "subtitles.big_dog_bark.dog_machine_gun": "Big dog fires"
+  "subtitles.big_dog_bark.dog_machine_gun": "Big dog fires",
+  "subtitles.big_dog_bark.dog_tame_success": "Big dog tamed"
 }

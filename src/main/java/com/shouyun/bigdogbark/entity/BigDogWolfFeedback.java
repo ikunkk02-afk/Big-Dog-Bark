@@ -1,8 +1,10 @@
 package com.shouyun.bigdogbark.entity;
 
+import com.shouyun.bigdogbark.sound.BigDogBarkSoundEvents;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.world.WorldEvents;
 
 /**
@@ -21,9 +23,11 @@ public final class BigDogWolfFeedback {
 		world.syncGlobalEvent(WorldEvents.BONE_MEAL_USED, wolf.getBlockPos(), 0);
 	}
 
-	/** 驯服成功反馈:原版爱心粒子(后续追加 dog_tame_success.ogg)。 */
+	/** 驯服成功反馈:原版爱心粒子 + 自定义驯服成功音效。 */
 	public static void playTameSuccessFeedback(ServerWorld world, WolfEntity wolf) {
 		world.sendEntityStatus(wolf, EntityStatuses.ADD_POSITIVE_PLAYER_REACTION_PARTICLES);
+		world.playSoundFromEntity(null, wolf, BigDogBarkSoundEvents.DOG_TAME_SUCCESS,
+				SoundCategory.NEUTRAL, 1.0F, 1.0F);
 	}
 
 	/** 驯服失败反馈:原版失败粒子(后续追加失败音效)。 */
