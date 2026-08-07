@@ -38,6 +38,8 @@ import net.minecraft.world.explosion.ExplosionBehavior;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * 抱起的大狗物品。
@@ -86,6 +88,12 @@ public class CarriedBigDogItem extends Item {
 
 	/** 机枪连射间隔(Tick):蓄能达到 40 Tick 后每 4 Tick 自动射一发。 */
 	public static final int MACHINE_GUN_FIRE_INTERVAL = 4;
+
+	/** 机枪每发子弹消耗的蓄能 Tick:消耗速度 > 自然恢复,持续射击会耗尽能量。 */
+	public static final int MACHINE_GUN_COST_PER_SHOT = 10;
+
+	/** 每个玩家当前机枪连射已消耗的子弹数(松开/死亡/断线时清除)。 */
+	private static final Map<UUID, Integer> MACHINE_GUN_FIRE_COUNT = new HashMap<>();
 
 	/** 炸膛爆炸威力(视觉约 2～3 级,不破坏地形)。 */
 	private static final float MISFIRE_EXPLOSION_POWER = 3.0F;
@@ -175,15 +183,19 @@ public class CarriedBigDogItem extends Item {
 			return;
 		}
 		int elapsed = MAX_USE_TIME - remainingUseTicks;
-		// 机枪模式:蓄能 40 Tick 后进入连射,不炸膛
+		// 机枪模式:蓄能 40 Tick 后进入连射,每发消耗能量
 		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			int fireCount = MACHINE_GUN_FIRE_COUNT.getOrDefault(player.getUuid(), 0);
+			int energy = elapsed - fireCount * MACHINE_GUN_COST_PER_SHOT;
 			if (elapsed == READY_CHARGE_TICKS) {
 				world.playSoundFromEntity(null, player, BigDogBarkSoundEvents.DOG_CHARGE_READY,
 						SoundCategory.PLAYERS, 1.0F, 1.0F);
 				sendActionBar(player, "action.big_dog_bark.machine_gun_ready");
 			}
-			if (elapsed >= READY_CHARGE_TICKS && (elapsed - READY_CHARGE_TICKS) % MACHINE_GUN_FIRE_INTERVAL == 0) {
+			if (elapsed >= READY_CHARGE_TICKS && energy >= MACHINE_GUN_COST_PER_SHOT
+					&& (elapsed - READY_CHARGE_TICKS) % MACHINE_GUN_FIRE_INTERVAL == 0) {
 				fireMachineGunBullet((ServerWorld) world, player, stack);
+				MACHINE_GUN_FIRE_COUNT.put(player.getUuid(), fireCount + 1);
 			}
 			return; // 机枪模式不触发蓄能/炸膛逻辑
 		}
@@ -222,8 +234,9 @@ public class CarriedBigDogItem extends Item {
 			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
 			return;
 		}
-		// 机枪模式:松开即停(子弹已在 usageTick 中连射),不发射单发
+		// 机枪模式:松开即停,清除子弹计数,短冷却再蓄能
 		if (BigDogEnchantmentUtil.hasMachineGun(stack, player.getRegistryManager())) {
+			MACHINE_GUN_FIRE_COUNT.remove(player.getUuid());
 			player.getItemCooldownManager().set(stack.getItem(), LAUNCH_COOLDOWN_TICKS);
 			return;
 		}
