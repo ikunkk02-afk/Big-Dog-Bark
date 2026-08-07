@@ -1,5 +1,7 @@
 package com.shouyun.bigdogbark;
 
+import com.shouyun.bigdogbark.entity.BigDogBarkEntityTypes;
+import com.shouyun.bigdogbark.entity.BigDogPickupInteractionHandler;
 import com.shouyun.bigdogbark.entity.BigDogWolfTamingHandler;
 import com.shouyun.bigdogbark.entity.DingDongChickenDeathHandler;
 import com.shouyun.bigdogbark.entity.DingDongChickenInteractionHandler;
@@ -37,6 +39,9 @@ public class BigDogBark implements ModInitializer {
 
 		// 第四阶段:抱起与放下完全成长大狗(注册在成长交互之后,手持鸡肉时优先喂食)
 		BigDogPickupInteractionHandler.register();
+
+		// 第五阶段:发射的大狗投射物实体类型
+		BigDogBarkEntityTypes.register();
 
 		LOGGER.info("Big Dog Bark (大狗叫) initialized.");
 	}

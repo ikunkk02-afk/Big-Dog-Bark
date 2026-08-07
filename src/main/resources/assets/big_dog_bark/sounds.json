@@ -34,5 +34,32 @@
         "stream": false
       }
     ]
+  },
+  "dog_charge": {
+    "subtitle": "subtitles.big_dog_bark.dog_charge",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_charge",
+        "stream": false
+      }
+    ]
+  },
+  "dog_charge_ready": {
+    "subtitle": "subtitles.big_dog_bark.dog_charge_ready",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_charge_ready",
+        "stream": false
+      }
+    ]
+  },
+  "dog_launch": {
+    "subtitle": "subtitles.big_dog_bark.dog_launch",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_launch",
+        "stream": false
+      }
+    ]
   }
 }

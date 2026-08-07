@@ -15,4 +15,10 @@ public interface BigDogWolfAccess {
 
 	/** 设置成长进度,实现方负责限制在 0～最大进度。 */
 	void bigDogBark$setGrowthPoints(int growthPoints);
+
+	/** 当前武器模式(0 = 无,1 = 蓄能,见 {@link BigDogWeaponMode}),普通狼默认 0。 */
+	int bigDogBark$getWeaponMode();
+
+	/** 设置武器模式,实现方负责限制在 0～{@link BigDogWeaponMode#MAX_VALUE}。 */
+	void bigDogBark$setWeaponMode(int weaponMode);
 }

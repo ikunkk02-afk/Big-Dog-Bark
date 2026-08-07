@@ -1,6 +1,5 @@
 package com.shouyun.bigdogbark.client.render;
 
-import com.shouyun.bigdogbark.item.CarriedBigDogData;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -8,7 +7,6 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
@@ -19,12 +17,13 @@ import net.minecraft.util.math.RotationAxis;
  * <p>这不是平面物品贴图或手写 JSON 方块模型：物品栏、手持、掉落状态均由
  * Minecraft 原版狼实体模型及其特性层（毛色、项圈等）实时渲染。物品 JSON
  * 仅负责声明 {@code builtin/entity} 和不同显示场景的基础变换。</p>
+ *
+ * <p>预览狼的创建/缓存与“发射的大狗”投射物渲染共用 {@link CarriedBigDogRenderCache}
+ * （本项目内唯一的一套狼模型渲染代码）。</p>
  */
 public final class CarriedBigDogItemRenderer implements BuiltinItemRendererRegistry.DynamicItemRenderer {
 
-	private ClientWorld cachedWorld;
-	private ItemStack cachedStack = ItemStack.EMPTY;
-	private WolfEntity previewWolf;
+	private final CarriedBigDogRenderCache previewCache = new CarriedBigDogRenderCache(true);
 
 	@Override
 	public void render(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices,
@@ -35,7 +34,7 @@ public final class CarriedBigDogItemRenderer implements BuiltinItemRendererRegis
 			return;
 		}
 
-		WolfEntity wolf = getOrCreatePreviewWolf(stack, world);
+		WolfEntity wolf = previewCache.getOrCreate(stack, world);
 		if (wolf == null) {
 			return;
 		}
@@ -53,30 +52,5 @@ public final class CarriedBigDogItemRenderer implements BuiltinItemRendererRegis
 		renderer.render(wolf, 0.0F, client.getRenderTickCounter().getTickDelta(true),
 				matrices, vertexConsumers, light);
 		matrices.pop();
-	}
-
-	private WolfEntity getOrCreatePreviewWolf(ItemStack stack, ClientWorld world) {
-		if (previewWolf != null && cachedWorld == world && ItemStack.areEqual(cachedStack, stack)) {
-			return previewWolf;
-		}
-
-		WolfEntity wolf = EntityType.WOLF.create(world);
-		if (wolf == null) {
-			return null;
-		}
-
-		if (!CarriedBigDogData.restoreWolfData(stack, wolf)) {
-			// 无效测试物品也使用真正的狼模型作为安全预览，但绝不从其生成实体。
-			wolf.setTamed(true, false);
-		}
-		wolf.setSitting(true);
-		wolf.setTarget(null);
-		wolf.setCustomName(null);
-		wolf.calculateDimensions();
-
-		cachedWorld = world;
-		cachedStack = stack.copy();
-		previewWolf = wolf;
-		return wolf;
 	}
 }

@@ -1,7 +1,9 @@
 package com.shouyun.bigdogbark.item;
 
 import com.shouyun.bigdogbark.entity.BigDogGrowth;
+import com.shouyun.bigdogbark.entity.BigDogWeaponMode;
 import com.shouyun.bigdogbark.entity.BigDogWolfUtil;
+import com.shouyun.bigdogbark.enchantment.BigDogEnchantmentUtil;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.passive.WolfEntity;
@@ -66,6 +68,11 @@ public final class CarriedBigDogData {
 		// 狼的自定义名称应用到物品显示名(放下时用于恢复或覆盖)
 		if (wolf.hasCustomName()) {
 			stack.set(DataComponentTypes.CUSTOM_NAME, wolf.getCustomName());
+		}
+		// 武器模式恢复:蓄能大狗(WeaponMode = CHARGE)重新抱起时通过真实附魔 API
+		// 重新添加“蓄能 I”,保证 放下 → 再抱起 不丢失附魔(实体状态没有旧物品栈可复制)
+		if (BigDogWolfUtil.getWeaponMode(wolf) == BigDogWeaponMode.CHARGE) {
+			BigDogEnchantmentUtil.applyCharge(stack, wolf.getRegistryManager());
 		}
 		return stack;
 	}

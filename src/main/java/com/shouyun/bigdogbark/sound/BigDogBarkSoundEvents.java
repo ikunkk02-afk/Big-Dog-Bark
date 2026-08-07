@@ -25,6 +25,15 @@ public final class BigDogBarkSoundEvents {
 	/** 特殊大狗阶段成长音效(仅在成长阶段跨越时播放一次)。 */
 	public static final SoundEvent DOG_GROWTH_STAGE = register("dog_growth_stage");
 
+	/** 蓄能开始音效(普通右键开始蓄力时播放一次)。 */
+	public static final SoundEvent DOG_CHARGE = register("dog_charge");
+
+	/** 蓄能完毕提示音效(蓄力达到 40 Tick 时播放一次)。 */
+	public static final SoundEvent DOG_CHARGE_READY = register("dog_charge_ready");
+
+	/** 蓄能发射音效(松开右键发射大狗时播放)。 */
+	public static final SoundEvent DOG_LAUNCH = register("dog_launch");
+
 	private BigDogBarkSoundEvents() {
 	}
 

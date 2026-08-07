@@ -1,6 +1,7 @@
 package com.shouyun.bigdogbark.mixin;
 
 import com.shouyun.bigdogbark.entity.BigDogGrowth;
+import com.shouyun.bigdogbark.entity.BigDogWeaponMode;
 import com.shouyun.bigdogbark.entity.BigDogWolfAccess;
 import com.shouyun.bigdogbark.entity.BigDogWolfUtil;
 import net.minecraft.entity.passive.WolfEntity;
@@ -28,12 +29,16 @@ public abstract class WolfEntityMixin implements BigDogWolfAccess {
 
 	private static final String NBT_KEY = "BigDogBark.IsBigDog";
 	private static final String GROWTH_NBT_KEY = "BigDogBark.GrowthPoints";
+	private static final String WEAPON_NBT_KEY = "BigDogBark.WeaponMode";
 
 	@Unique
 	private boolean bigDogBark$isBigDog;
 
 	@Unique
 	private int bigDogBark$growthPoints;
+
+	@Unique
+	private int bigDogBark$weaponMode;
 
 	@Override
 	public boolean bigDogBark$isBigDog() {
@@ -55,6 +60,16 @@ public abstract class WolfEntityMixin implements BigDogWolfAccess {
 		this.bigDogBark$growthPoints = MathHelper.clamp(growthPoints, 0, BigDogGrowth.MAX_GROWTH_POINTS);
 	}
 
+	@Override
+	public int bigDogBark$getWeaponMode() {
+		return this.bigDogBark$weaponMode;
+	}
+
+	@Override
+	public void bigDogBark$setWeaponMode(int weaponMode) {
+		this.bigDogBark$weaponMode = MathHelper.clamp(weaponMode, 0, BigDogWeaponMode.MAX_VALUE);
+	}
+
 	@Inject(method = "writeCustomDataToNbt", at = @At("TAIL"))
 	private void bigDogBark$writeCustomDataToNbt(NbtCompound nbt, CallbackInfo ci) {
 		if (this.bigDogBark$isBigDog) {
@@ -63,6 +78,9 @@ public abstract class WolfEntityMixin implements BigDogWolfAccess {
 		if (this.bigDogBark$growthPoints > 0) {
 			nbt.putInt(GROWTH_NBT_KEY, this.bigDogBark$growthPoints);
 		}
+		if (this.bigDogBark$weaponMode != BigDogWeaponMode.NONE) {
+			nbt.putInt(WEAPON_NBT_KEY, this.bigDogBark$weaponMode);
+		}
 	}
 
 	@Inject(method = "readCustomDataFromNbt", at = @At("TAIL"))
@@ -70,6 +88,8 @@ public abstract class WolfEntityMixin implements BigDogWolfAccess {
 		this.bigDogBark$isBigDog = nbt.getBoolean(NBT_KEY);
 		this.bigDogBark$growthPoints = MathHelper.clamp(nbt.getInt(GROWTH_NBT_KEY), 0,
 				BigDogGrowth.MAX_GROWTH_POINTS);
+		// 武器模式:旧存档无字段默认 0;非法值 clamp 到 0～MAX_VALUE
+		this.bigDogBark$weaponMode = MathHelper.clamp(nbt.getInt(WEAPON_NBT_KEY), 0, BigDogWeaponMode.MAX_VALUE);
 		// 加载完成后按成长进度重新应用缩放(幂等:先移除旧修饰符再添加)
 		BigDogWolfUtil.applyGrowthScale((WolfEntity) (Object) this);
 	}

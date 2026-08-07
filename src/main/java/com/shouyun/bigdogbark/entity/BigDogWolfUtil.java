@@ -42,6 +42,18 @@ public final class BigDogWolfUtil {
 		return BigDogGrowth.stageFor(getGrowthPoints(wolf));
 	}
 
+	/** 当前武器模式(0 = 无,1 = 蓄能),见 {@link BigDogWeaponMode}。 */
+	public static int getWeaponMode(WolfEntity wolf) {
+		return wolf instanceof BigDogWolfAccess access ? access.bigDogBark$getWeaponMode() : BigDogWeaponMode.NONE;
+	}
+
+	/** 设置武器模式(实现方负责限制在合法范围)。 */
+	public static void setWeaponMode(WolfEntity wolf, int weaponMode) {
+		if (wolf instanceof BigDogWolfAccess access) {
+			access.bigDogBark$setWeaponMode(weaponMode);
+		}
+	}
+
 	/**
 	 * 是否已长到最大:必须是特殊大狗、进度达到 12、阶段为 4。
 	 * 该方法供下一阶段“下蹲右键抱起大狗”系统调用。
