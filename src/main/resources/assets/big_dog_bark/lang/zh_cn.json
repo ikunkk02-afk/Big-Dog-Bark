@@ -50,5 +50,6 @@
   "item.big_dog_bark.carried_big_dog.machine_gun_help": "按住右键蓄能;松开后再次按住右键开火,能量耗尽停止",
   "enchantment.big_dog_bark.machine_gun": "机枪",
   "subtitles.big_dog_bark.dog_machine_gun": "大狗:机枪发射",
-  "subtitles.big_dog_bark.dog_tame_success": "大狗:驯服成功"
+  "subtitles.big_dog_bark.dog_tame_success": "大狗:驯服成功",
+  "subtitles.big_dog_bark.dog_tame_failure": "大狗:驯服失败"
 }

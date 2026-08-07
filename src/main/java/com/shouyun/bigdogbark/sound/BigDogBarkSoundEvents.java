@@ -40,6 +40,9 @@ public final class BigDogBarkSoundEvents {
 	/** 特殊大狗驯服成功音效(附魔骨头驯服成功时播放)。 */
 	public static final SoundEvent DOG_TAME_SUCCESS = register("dog_tame_success");
 
+	/** 特殊大狗驯服失败音效(附魔骨头驯服失败时播放)。 */
+	public static final SoundEvent DOG_TAME_FAILURE = register("dog_tame_failure");
+
 	private BigDogBarkSoundEvents() {
 	}
 

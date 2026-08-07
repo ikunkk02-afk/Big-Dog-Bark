@@ -79,5 +79,14 @@
         "stream": false
       }
     ]
+  },
+  "dog_tame_failure": {
+    "subtitle": "subtitles.big_dog_bark.dog_tame_failure",
+    "sounds": [
+      {
+        "name": "big_dog_bark:entity/dog_tame_failure",
+        "stream": false
+      }
+    ]
   }
 }

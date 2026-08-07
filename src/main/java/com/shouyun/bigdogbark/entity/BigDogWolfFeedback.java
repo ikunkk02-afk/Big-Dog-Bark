@@ -30,8 +30,10 @@ public final class BigDogWolfFeedback {
 				SoundCategory.NEUTRAL, 1.0F, 1.0F);
 	}
 
-	/** 驯服失败反馈:原版失败粒子(后续追加失败音效)。 */
+	/** 驯服失败反馈:原版失败粒子 + 自定义驯服失败音效。 */
 	public static void playTameFailureFeedback(ServerWorld world, WolfEntity wolf) {
 		world.sendEntityStatus(wolf, EntityStatuses.ADD_NEGATIVE_PLAYER_REACTION_PARTICLES);
+		world.playSoundFromEntity(null, wolf, BigDogBarkSoundEvents.DOG_TAME_FAILURE,
+				SoundCategory.NEUTRAL, 1.0F, 1.0F);
 	}
 }
